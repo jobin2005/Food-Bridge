@@ -1,31 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Food Bridge - Sign Up</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Bridge - Sign In</title>
+  <link rel="stylesheet" href="css_signup.css">
 </head>
 <body>
-    <header>
-        <h1>FOOD BRIDGE</h1>
-    </header>
-    <main class="signup-page">
-        <section class="login-box">
-            <h2>Sign In</h2>
-            <form action="#" method="POST">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
-                
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
-                
-                <a href="#" class="forgot-password">Forgot password?</a>
-                <button type="submit" class="btn">Sign In</button>
-                
-                <p>New? <a href="reg.html">Register now</a></p>
-            </form>
-        </section>
-    </main>
+  <div class="container">
+    <div class="left-section">
+      <img src="logo.png" alt="Food Bridge Logo" class="logo">
+      <br>
+      <br>
+      <p class="quote" >One fingerprints<br>don’t fade<br>from the life<br>we touch</p>
+    </div>
+    <div class="right-section">
+      <h1>Sign in</h1>
+      <form class="login-form">
+        <input type="text" placeholder="Username" class="input-field" required>
+        <input type="password" placeholder="Password" class="input-field" required>
+        <a href="#" class="forgot-password">Forgot password?</a>
+        <button type="submit" class="signin-btn">Sign in</button>
+        <p class="register-text">New? <a href="reg.html" class="register-link">Register now</a></p>
+      </form>
+    </div>
+  </div>
 </body>
 </html>
