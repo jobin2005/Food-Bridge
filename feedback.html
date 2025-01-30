@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback - Volunteer Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #e0e5d3; /* Consistent background color */
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .feedback-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-top: 30px;
+        }
+        .feedback-form h4 {
+            margin-bottom: 20px;
+            font-size: 22px;
+            color: #40916c; /* Consistent text color */
+        }
+        .feedback-form label {
+            font-size: 16px;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .feedback-form textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 100px;
+        }
+        .feedback-form input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+        .submit-btn {
+            background: #40916c; /* Consistent button color */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        .submit-btn:hover {
+            background: #2d6a4f; /* Darker shade for hover effect */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h3>Feedback Page</h3>
+        <p>We value your feedback to improve our services</p>
+    </header>
+    
+    <section class="feedback-form">
+        <h4>Share Your Feedback</h4>
+        <form action="#">
+            <label for="name">Your Name</label>
+            <input type="text" id="name" placeholder="Enter your name">
+
+            <label for="email">Your Email</label>
+            <input type="text" id="email" placeholder="Enter your email">
+
+            <label for="feedback">Your Feedback</label>
+            <textarea id="feedback" placeholder="Share your thoughts..." required></textarea>
+
+            <button type="submit" class="submit-btn">Submit Feedback</button>
+        </form>
+    </section>
+</body>
+</html>
