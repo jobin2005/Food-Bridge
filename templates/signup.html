@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Bridge - Sign In</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css_signup.css') }}">
+</head>
+<body>
+  <div class="container">
+    <div class="left-section">
+      <img src="logo.png" alt="Food Bridge Logo" class="logo">
+      <br>
+      <br>
+      <p class="quote" >One's fingerprints<br>don’t fade<br>from the life<br>we touch</p>
+    </div>
+  
+    <div class="right-section">
+      <h1>Sign in</h1>
+      <form class="login-form">
+        <input type="text" placeholder="Username" id="username" class="input-field" required>
+        <input type="password" placeholder="Password" id="password" class="input-field" required>
+        <a href="#" class="forgot-password">Forgot password?</a>
+        <button type="button" class="signin-btn" onclick="login()">Sign in</button>
+        <p id="loginError" class="error"></p>
+        <p class="register-text">New? <a href="reg.html" class="register-link">Register now</a></p>
+      </form>
+    </div>
+    <script src="{{ url_for('static', filename='static/signup.js') }}"></script>
+  </div>
+  
+</body>
+</html>
