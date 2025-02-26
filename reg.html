@@ -10,6 +10,7 @@
             margin: 0;
             padding: 0;
             background-color: #f9f9f9;
+background: url('bg3.jpg');
         }
         .container {
             max-width: 600px;
@@ -30,7 +31,7 @@
         label {
             margin: 10px 0 5px;
         }
-        input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="tel"], select {
+        input, select {
             width: 100%;
             padding: 8px;
             margin-bottom: 15px;
@@ -38,19 +39,22 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
-        .radio-group {
+        .radio-group, .checkbox-group {
             display: flex;
-            justify-content: space-between;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
             margin-bottom: 15px;
         }
-        .radio-group label {
-            margin: 0;
+        .radio-group label, .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
         }
-        input[type="radio"] {
-            margin-right: 5px;
-        }
-        .checkbox {
-            margin-bottom: 15px;
+        input[type="radio"], input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
         }
         .btn {
             background-color: #4CAF50;
@@ -64,105 +68,136 @@
         .btn:hover {
             background-color: #45a049;
         }
+        .error-message {
+            color: red;
+            font-size: 14px;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Registration</h1>
-        <form>
+        <form id="register-form">
             <label><b>Select Your Role</b></label>
             <div class="radio-group">
-                <label><input type="radio" name="role" value="Donor"> Donor</label>
-                <label><input type="radio" name="role" value="Volunteer"> Volunteer</label>
-                <label><input type="radio" name="role" value="NGO"> NGO</label>
+                <label><input type="radio" name="role" value="Donor" required> Donor</label>
+                <label><input type="radio" name="role" value="Volunteer" required> Volunteer</label>
+                <label><input type="radio" name="role" value="NGO" required> NGO</label>
             </div>
 
             <label><b>First Name</b></label>
-            <input type="text" name="first_name" placeholder="First Name" required>
+            <input type="text" id="first_name" placeholder="First Name" required>
 
             <label><b>Last Name</b></label>
-            <input type="text" name="last_name" placeholder="Last Name">
+            <input type="text" id="last_name" placeholder="Last Name">
 
             <label><b>Date of Birth</b></label>
-            <input type="date" name="dob">
+            <input type="date" id="dob">
 
             <label><b>Gender</b></label>
             <div class="radio-group">
-                <label><input type="radio" name="gender" value="Male"> Male</label>
-                <label><input type="radio" name="gender" value="Female"> Female</label>
-                <label><input type="radio" name="gender" value="Others"> Others</label>
+                <label><input type="radio" name="gender" value="Male" required> Male</label>
+                <label><input type="radio" name="gender" value="Female" required> Female</label>
+                <label><input type="radio" name="gender" value="Others" required> Others</label>
             </div>
 
             <label><b>Email</b></label>
-            <input type="email" name="email" placeholder="Email" required>
+            <input type="email" id="email" placeholder="Email" required>
 
             <label><b>Mobile Number</b></label>
-            <input type="tel" name="mobile" placeholder="Mobile Number" required pattern="\d{10}" title="Mobile number must be 10 digits.">
+            <input type="tel" id="mobile" placeholder="Mobile Number" required pattern="\d{10}" title="Mobile number must be 10 digits.">
 
             <label><b>State</b></label>
-            <input type="text" name="state" placeholder="State" required>
+            <input type="text" id="state" placeholder="State" required>
 
             <label><b>District</b></label>
-            <input type="text" name="district" placeholder="District" required>
+            <input type="text" id="district" placeholder="District" required>
 
             <label><b>Street Name</b></label>
-            <input type="text" name="street" placeholder="Street Name" required>
+            <input type="text" id="street" placeholder="Street Name" required>
 
             <label><b>House No/Locality</b></label>
-            <input type="text" name="house" placeholder="House No./Locality" required>
+            <input type="text" id="house" placeholder="House No./Locality" required>
 
             <label><b>Pincode</b></label>
-            <input type="text" name="pincode" placeholder="Pincode" required pattern="\d{6}" title="Pincode must be 6 digits.">
+            <input type="text" id="pincode" placeholder="Pincode" required pattern="\d{6}" title="Pincode must be exactly 6 digits." oninput="validatePincode()">
+            <p id="pincodeError" class="error-message">Pincode must be exactly 6 digits.</p>
 
             <label><b>Username</b></label>
-            <input type="text" name="username" placeholder="Username" required>
+            <input type="text" id="username" placeholder="Username" required>
 
             <label><b>Password</b></label>
-<input type="password" name="password" id="password" placeholder="Create Password" required
-       oninput="validatePassword()"
-       title="Password must be at least 6 characters long and include at least 1 special character.">
+            <input type="password" id="password" placeholder="Create Password" required oninput="validatePassword()">
+            <p id="passwordError" class="error-message">Password must be at least 6 characters long and include at least 1 special character.</p>
 
-<label><b>Confirm Password</b></label>
-<input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm Password" required
-       oninput="validateConfirmPassword()">
+            <label><b>Confirm Password</b></label>
+            <input type="password" id="confirm_password" placeholder="Confirm Password" required oninput="validateConfirmPassword()">
+            <p id="passwordMatchError" class="error-message">Passwords do not match.</p>
 
-<p id="passwordError" style="color: red; display: none;">Password must be at least 6 characters long and include at least 1 special character.</p>
-<p id="passwordMatchError" style="color: red; display: none;">Passwords do not match.</p>
+            <p id="registrationError" class="error-message"></p>
 
-<script>
-  function validatePassword() {
-    var password = document.getElementById("password");
-    var passwordError = document.getElementById("passwordError");
-
-    var passwordPattern = /^(?=.*[!@#$%^&*(),.?\":{}|<>])[A-Za-z\d!@#$%^&*(),.?\":{}|<>]{6,}$/;
-
-    if (!passwordPattern.test(password.value)) {
-      passwordError.style.display = "block";
-    } else {
-      passwordError.style.display = "none";
-    }
-  }
-
-  function validateConfirmPassword() {
-    var password = document.getElementById("password");
-    var confirmPassword = document.getElementById("confirm_password");
-    var passwordMatchError = document.getElementById("passwordMatchError");
-
-    if (password.value !== confirmPassword.value) {
-      passwordMatchError.style.display = "block";
-    } else {
-      passwordMatchError.style.display = "none";
-    }
-  }
-</script>
-
-
-            <div class="checkbox">
-                <label><input type="checkbox" name="terms" required> Accept terms and conditions</label>
+            <div class="checkbox-group">
+                <label><input type="checkbox" required> Accept terms and conditions</label>
             </div>
 
             <button type="submit" class="btn">Register</button>
         </form>
     </div>
+
+    <script>
+        function validatePassword() {
+            var password = document.getElementById("password").value;
+            var passwordError = document.getElementById("passwordError");
+            var passwordPattern = /^(?=.*[!@#$%^&*(),.?\":{}|<>])[A-Za-z\d!@#$%^&*(),.?\":{}|<>]{6,}$/;
+
+            passwordError.style.display = passwordPattern.test(password) ? "none" : "block";
+        }
+
+        function validateConfirmPassword() {
+            var password = document.getElementById("password").value;
+            var confirmPassword = document.getElementById("confirm_password").value;
+            var passwordMatchError = document.getElementById("passwordMatchError");
+
+            passwordMatchError.style.display = (password === confirmPassword) ? "none" : "block";
+        }
+
+        function validatePincode() {
+            var pincode = document.getElementById("pincode").value;
+            var pincodeError = document.getElementById("pincodeError");
+            var pincodePattern = /^\d{6}$/; 
+
+            pincodeError.style.display = pincodePattern.test(pincode) ? "none" : "block";
+        }
+
+        document.getElementById("register-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            var username = document.getElementById("username").value;
+            var users = JSON.parse(localStorage.getItem("users")) || {};
+            var registrationError = document.getElementById("registrationError");
+
+            if (users[username]) {
+                registrationError.innerText = "Username already exists. Try a different one.";
+                registrationError.style.display = "block";
+                return;
+            }
+
+            users[username] = {
+                password: document.getElementById("password").value,
+                role: document.querySelector('input[name="role"]:checked').value
+            };
+
+            localStorage.setItem("users", JSON.stringify(users));
+
+            registrationError.innerText = "Registration successful! Redirecting to login...";
+            registrationError.style.color = "green";
+            registrationError.style.display = "block";
+
+            setTimeout(() => {
+                window.location.href = "signup.html";
+            }, 1500);
+        });
+    </script>
 </body>
 </html>

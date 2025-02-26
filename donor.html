@@ -6,12 +6,13 @@
     <title>Food Bridge - Make a Donation</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            background: url('bg1.jpg') no-repeat center center/cover; /* Background image */
             color: #333;
             display: flex;
+            height: 100vh;
         }
 
         .container {
@@ -21,83 +22,108 @@
 
         .sidebar {
             width: 250px;
-            background: #fff;
+            background: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
             padding: 20px;
             display: flex;
             flex-direction: column;
             gap: 20px;
             border-right: 1px solid #ddd;
+            box-shadow: 2px 0px 5px rgba(0, 0, 0, 0.1);
         }
         .sidebar h2 {
             font-size: 22px;
             font-weight: bold;
+            text-align: center;
+            color: #4CAF50;
         }
         .menu a {
             display: block;
-            padding: 10px;
+            padding: 12px;
             text-decoration: none;
             color: #333;
             background: #e0e5d3;
             border-radius: 5px;
             margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
         }
         .menu a:hover {
-            background: #5a915a;
+            background: #4CAF50;
             color: #fff;
         }
 
+        /* Content with transparent background for readability */
         .content {
-            flex: 1; /* Content takes up remaining space */
-            padding: 20px;
-            background-color: #fff;
+            flex: 1;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.9); /* Semi-transparent white */
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 40px auto;
         }
 
         .content h1 {
             margin-bottom: 20px;
             text-align: center;
+            color: #4CAF50;
+        }
+
+        .welcome-message {
+            text-align: center;
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 20px;
         }
 
         .form-group {
             margin-bottom: 15px;
             display: flex;
-            flex-direction: column; /* Labels on top of inputs */
+            flex-direction: column;
         }
 
         .form-group label {
+            font-weight: bold;
             margin-bottom: 5px;
         }
 
         .form-group input,
         .form-group select {
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: 6px;
             box-sizing: border-box;
+            font-size: 16px;
         }
 
         button {
             background-color: #4CAF50;
             color: #fff;
-            padding: 12px 20px;
+            padding: 14px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            width: 100%; /* Button takes full width */
+            width: 100%;
+            font-size: 18px;
+            transition: 0.3s;
         }
 
         button:hover {
-            background-color: #45a049;
+            background-color: #388e3c;
         }
 
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .container {
-                flex-direction: column; /* Stack sidebar and content vertically */
+                flex-direction: column;
             }
 
             .sidebar {
-                width: 100%; /* Sidebar takes full width on smaller screens */
+                width: 100%;
+            }
+
+            .content {
+                margin: 20px;
             }
         }
     </style>
@@ -107,8 +133,8 @@
         <aside class="sidebar">
             <h2>FOOD BRIDGE</h2>
             <div class="menu">
-                <a href="#">Dashboard</a>
-                <a href="#">Profile</a>
+                <a href="donor.html">Dashboard</a>
+                <a href="Donor_profile.html">Profile</a>
                 <a href="feedback.html">Feedback</a>
                 <a href="support.html">Support</a>
                 <a href="mainpage.html">Log Out</a>
@@ -116,6 +142,7 @@
         </aside>
         <main class="content">
             <h1>Make a Donation</h1>
+            <p class="welcome-message">Hello, <span id="donorName">Donor</span>! Thank you for your generosity.</p>
             <form action="#" method="post">
                 <div class="form-group">
                     <label for="itemName">Item Name:</label>
@@ -138,34 +165,6 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="donorName">Donor Name:</label>
-                    <input type="text" id="donorName" name="donorName" required>
-                </div>
-                <div class="form-group">
-                    <label for="houseNo">House No.:</label>
-                    <input type="text" id="houseNo" name="houseNo" required>
-                </div>
-                <div class="form-group">
-                    <label for="street">Street:</label>
-                    <input type="text" id="street" name="street" required>
-                </div>
-                <div class="form-group">
-                    <label for="city">City:</label>
-                    <input type="text" id="city" name="city" required>
-                </div>
-                <div class="form-group">
-                    <label for="state">State:</label>
-                    <input type="text" id="state" name="state" required>
-                </div>
-                <div class="form-group">
-                    <label for="pincode">Pincode:</label>
-                    <input type="text" id="pincode" name="pincode" required>
-                </div>
-                <div class="form-group">
-                    <label for="contactNumber">Contact Number:</label>
-                    <input type="tel" id="contactNumber" name="contactNumber" required>
-                </div>
-                <div class="form-group">
                     <label for="donationDate">Donation Date:</label>
                     <input type="date" id="donationDate" name="donationDate" required>
                 </div>
@@ -173,5 +172,15 @@
             </form>
         </main>
     </div>
+
+    <script>
+        // Retrieve donor name from localStorage and display it
+        let users = JSON.parse(localStorage.getItem("users")) || {};
+        let loggedInUser = localStorage.getItem("loggedInUser"); // Store logged-in user when they sign in
+
+        if (loggedInUser && users[loggedInUser]) {
+            document.getElementById("donorName").textContent = users[loggedInUser].first_name;
+        }
+    </script>
 </body>
 </html>
