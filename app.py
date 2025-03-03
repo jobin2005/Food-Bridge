@@ -1,133 +1,59 @@
-import oracledb  # Oracle Database Library
-import os
-from flask import Flask, request, jsonify, session, render_template
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+import oracledb
 
-# 🔹 Flask App Initialization
 app = Flask(__name__)
-app.secret_key = "f8b7d9e1c2a4567890b3d4e5f6a7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5"  # Required for session management
+app.secret_key = 'your_secret_key'  # Needed for session management
 
-# 🔹 Oracle Cloud Database Configuration
-USER = "admin"
-PASSWORD = "TKM23csa07274671"
-DSN = "foodbridge_high"  # Using foodbridge_high from tnsnames.ora
+# Database connection details
+dsn = "(description=(retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.ap-hyderabad-1.oraclecloud.com))(connect_data=(service_name=gc986a84e81826d_foodbridge_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))"
+config = r"C:\Users\katta\OneDrive\Desktop\s4\DBMS\Projrct\Wallet_FOODBRIDGE"
+wltloc = r"C:\Users\katta\OneDrive\Desktop\s4\DBMS\Projrct\Wallet_FOODBRIDGE"
+wltpass = "b23csa@TKMCE"
 
-# 🔹 Wallet Configuration
-CONFIG_DIR = r"C:\Users\adith\Documents\Wallet_FOODBRIDGE"  # Fix using raw string
-
-WALLET_PASSWORD = "b23csa@TKMCE"  # Wallet password
-
-# 🔹 Set TNS_ADMIN to Wallet Folder
-os.environ["TNS_ADMIN"] = CONFIG_DIR
-
-# 🔹 Enable Oracle Thin Mode (No Instant Client Required)
-oracledb.defaults.fetch_lobs = False  # Optimizes performance
-
-# 🔹 Function to Connect to Oracle Database
 def get_db_connection():
-    try:
-        connection = oracledb.connect(
-            user=USER,
-            password=PASSWORD,
-            dsn=DSN,
-            config_dir=CONFIG_DIR, 
-            wallet_location=CONFIG_DIR,  
-            wallet_password=WALLET_PASSWORD  
-        )
-        print("✅ Database connection successful!")
-        return connection
-    except oracledb.Error as e:
-        print("❌ Error connecting to database:", e)
-        return None
+    """Establish connection to Oracle DB"""
+    return oracledb.connect(user="admin", password="TKM23csa07274671", dsn=dsn, config_dir=config, wallet_location=wltloc, wallet_password=wltpass)
 
-# 🔹 Route: Serve Home Page
-@app.route("/")
-def home():
-    return render_template("reg.html")
+@app.route('/')
+def signin_page():
+    """Render the sign-in page"""
+    return render_template('signin.html')
 
-# 🔹 Route: Serve Registration Page
-@app.route("/register", methods=["GET"])
-def register_page():
-    return render_template("reg.html")
-
-# 🔹 Route: Serve Login Page
-@app.route("/login", methods=["GET"])
-def login_page():
-    return render_template("signup.html")
-
-# 🔹 API: Check if Username Exists
-@app.route("/check_username", methods=["GET"])
-def check_username():
-    username = request.args.get("username")
-    conn = get_db_connection()
-    if conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users WHERE username = :username", {"username": username})
-        count = cursor.fetchone()[0]
-        cursor.close()
-        conn.close()
-        return jsonify({"exists": count > 0})
-    return jsonify({"error": "Database connection failed"}), 500
-
-# 🔹 API: Register User
-@app.route("/register", methods=["POST"])
-def register():
-    data = request.json
-    username = data.get("username")
-    password = data.get("password")
-    email = data.get("email")
-    role = data.get("role")  # Donor, Volunteer, NGO
-
-    conn = get_db_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT COUNT(*) FROM users WHERE username = :username", {"username": username})
-            count = cursor.fetchone()[0]
-            if count > 0:
-                return jsonify({"error": "User already exists"}), 400
-
-            cursor.execute(
-                "INSERT INTO users (username, password, email, role) VALUES (:username, :password, :email, :role)",
-                {"username": username, "password": password, "email": email, "role": role}
-            )
-            conn.commit()
-            return jsonify({"message": "Registration successful"})
-        except oracledb.Error as e:
-            return jsonify({"error": str(e)})
-        finally:
-            cursor.close()
-            conn.close()
-    return jsonify({"error": "Database connection failed"}), 500
-
-# 🔹 API: User Login
-@app.route("/login", methods=["POST"])
+@app.route('/login', methods=['POST'])
 def login():
-    data = request.json
-    username = data.get("username")
-    password = data.get("password")
+    """Handle login form submission"""
+    username = request.json.get('username')
+    password = request.json.get('password')
 
     conn = get_db_connection()
-    if conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute(
-                "SELECT role FROM users WHERE username = :username AND password = :password",
-                {"username": username, "password": password}
-            )
-            user = cursor.fetchone()
-            if user:
-                session["user"] = username
-                return jsonify({"message": "Login successful", "role": user[0]})
-            else:
-                return jsonify({"error": "Invalid credentials"}), 401
-        except oracledb.Error as e:
-            return jsonify({"error": str(e)})
-        finally:
-            cursor.close()
-            conn.close()
-    return jsonify({"error": "Database connection failed"}), 500
+    cursor = conn.cursor()
 
-# 🔹 Run Flask App
-if __name__ == "__main__":
+    # Check credentials
+    cursor.execute("SELECT * FROM allusers WHERE username=:1 AND password=:2", (username, password))
+    user = cursor.fetchone()
+    
+    cursor.close()
+    conn.close()
+
+    if user:
+        session['user'] = username  # Store user session
+        return jsonify({'status': 'success', 'message': 'Login successful!', 'redirect': '/dashboard'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Invalid username or password'})
+
+@app.route('/dashboard')
+def dashboard():
+    """Protected dashboard page"""
+    if 'user' in session:
+        return f"<h1>Welcome, {session['user']}!</h1><p>You are logged in.</p>"
+    else:
+        return redirect(url_for('signin_page'))
+
+@app.route('/logout')
+def logout():
+    """Logout user"""
+    session.pop('user', None)
+    return redirect(url_for('signin_page'))
+
+if __name__ == '__main__':
     app.run(debug=True)
-
