@@ -38,7 +38,7 @@ def create_app(test_config=None):
     
     @app.route('/about')
     def aboutus():
-        return render_template("aboutus.html")
+        return render_template("about.html")
     
     @app.route('/signup', methods=['GET', 'POST'])
     def signup():

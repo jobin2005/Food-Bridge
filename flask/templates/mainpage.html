@@ -206,8 +206,8 @@
     <header>
         <h1>FOOD BRIDGE</h1>
         <nav>
-            <a href="About_us.html">About Us</a>
-            <a href="Contact.html">Contact Us</a>
+            <a href="about">About Us</a>
+            <a href="contact">Contact Us</a>
             <a href="#donate" class="donate-btn">Donate</a>
         </nav>
     </header>
@@ -218,18 +218,18 @@
             <h2>One's fingerprints don't fade from the life we touch.</h2>
             <p>Join us in bringing hope to families in need today.</p>
             <div class="btn-container">
-                <a href="reg.html" class="btn">Sign Up</a>
-                <a href="signup.html" class="btn">Login</a>
+                <a href="register" class="btn">Sign Up</a>
+                <a href="signup" class="btn">Login</a>
             </div>
         </div>
 
        
         <div class="slideshow">
-            <img src="img1.jpg" alt="Food donation" class="active">
-            <img src="img2.jpg" alt="Feeding the hungry">
-            <img src="img3.jpg" alt="Food charity event">
-            <img src="img4.jpg" alt="Volunteering at food bank">
-            <img src="img5.jpg" alt="Sharing food with the needy">
+            <img src="{{url_for('static', filename='img1.jpg')}}" alt="Food donation" class="active">
+            <img src="{{url_for('static', filename='img2.jpg')}}" alt="Feeding the hungry">
+            <img src="{{url_for('static', filename='img3.jpg')}}" alt="Food charity event">
+            <img src="{{url_for('static', filename='img4.jpg')}}" alt="Volunteering at food bank">
+            <img src="{{url_for('static', filename='img5.jpg')}}" alt="Sharing food with the needy">
         </div>
     </section>
 
@@ -253,8 +253,8 @@
     </section>
 
     <footer>
-        <a href="About_us.html">About Us</a>
-        <a href="Contact.html">Contact Us</a>
+        <a href="about">About Us</a>
+        <a href="contact">Contact Us</a>
     </footer>
 
     <script>

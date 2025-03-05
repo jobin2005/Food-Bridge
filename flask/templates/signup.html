@@ -112,7 +112,7 @@
 
   <div class="container">
     <div class="left-section">
-      <img src="logo.png" alt="Food Bridge Logo" class="logo">
+      <img src="{{url_for('static', filename='logo.png')}}" alt="Food Bridge Logo" class="logo">
       <br><br>
       <p class="quote">One's fingerprints<br>don’t fade<br>from the life<br>we touch</p>
     </div>
@@ -124,7 +124,7 @@
         <input type="password" id="password" placeholder="Password" class="input-field" required>
         <a href="#" class="forgot-password">Forgot password?</a>
         <button type="submit" class="signin-btn">Sign in</button>
-        <p class="register-text">New? <a href="reg.html" class="register-link">Register now</a></p>
+        <p class="register-text">New? <a href="register" class="register-link">Register now</a></p>
       </form>
       <p id="error-message"></p>
     </div>
@@ -149,11 +149,11 @@
                 
                 setTimeout(() => {
                     if (role === "Donor") {
-                        window.location.href = "donor.html";
+                        window.location.href = "donor";
                     } else if (role === "Volunteer") {
-                        window.location.href = "Volunteer.html";
+                        window.location.href = "Volunteer";
                     } else if (role === "NGO") {
-                        window.location.href = "ngodashboard.html";
+                        window.location.href = "ngo";
                     }
                 }, 1500);
             } else {
