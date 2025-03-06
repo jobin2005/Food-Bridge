@@ -1,7 +1,8 @@
 import os
 
 from flask import Flask, render_template, request
-from database import query
+from database import *
+from datetime import datetime, timedelta
 
 def create_app(test_config=None):
     # create and configure the app
@@ -64,8 +65,20 @@ def create_app(test_config=None):
     def support():
         return render_template("support.html")
     
-    @app.route('/donor')
+    @app.route('/donor', methods=['GET', 'POST'])
     def donor():
+        if request.method == "POST":
+            item_name = request.form.get('itemName')
+            quantity = request.form.get('quantity')
+            item_category = request.form.get('itemCategory')
+            donation_date = request.form.get('donationDate')
+            shelf_life = datetime.date(datetime.strptime(donation_date, '%Y-%m-%d') + timedelta(days=int(request.form.get('shelfLife'))))
+            x = query("SELECT DONATIONID FROM DONATION ORDER BY DONATIONID DESC")
+            dono_id = 101 if x == [] else x[0]+1
+            y = query("SELECT FOODID FROM FOOD ORDER BY FOODID DESC")
+            food_id = 101 if y == [] else y[0]+1
+            insert(f"INSERT INTO FOOD (FOODID,FOODNAME,FOODTYPE,QUANTITY,STATUS,SHELFLIFE) VALUES ({food_id},'{item_name}','{item_category}',{quantity},'ONHOLD',TO_DATE('{shelf_life}','YYYY-MM-DD'))")
+            print(query("SELECT * FROM FOOD"))
         return render_template("donor.html")
     
     @app.route('/donor_profile')

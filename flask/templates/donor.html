@@ -143,7 +143,7 @@
         <main class="content">
             <h1>Make a Donation</h1>
             <p class="welcome-message">Hello, <span id="donorName">Donor</span>! Thank you for your generosity.</p>
-            <form action="#" method="post">
+            <form id="donation-form" method="POST">
                 <div class="form-group">
                     <label for="itemName">Item Name:</label>
                     <input type="text" id="itemName" name="itemName" required>
@@ -173,7 +173,7 @@
         </main>
     </div>
 
-    <script>
+    <!-- <script>
         // Retrieve donor name from localStorage and display it
         let users = JSON.parse(localStorage.getItem("users")) || {};
         let loggedInUser = localStorage.getItem("loggedInUser"); // Store logged-in user when they sign in
@@ -181,6 +181,6 @@
         if (loggedInUser && users[loggedInUser]) {
             document.getElementById("donorName").textContent = users[loggedInUser].first_name;
         }
-    </script>
+    </script> -->
 </body>
 </html>
