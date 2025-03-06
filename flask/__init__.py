@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask, render_template, request
+from database import query
 
 def create_app(test_config=None):
     # create and configure the app
@@ -40,15 +41,15 @@ def create_app(test_config=None):
     def aboutus():
         return render_template("about.html")
     
-    @app.route('/signup', methods=['GET', 'POST'])
-    def signup():
-        if request.method == 'POST':
-            data = request.form
-            print(data)
-        return render_template("signup.html")
-    
     @app.route('/login', methods=['GET', 'POST'])
-    def login():
+    def signup():
+        if request.method == "POST":
+            username = request.form.get('username')
+            password = request.form.get('password')
+            x = query(f"SELECT * FROM LOGIN WHERE USERNAME = '{username}'")
+            if password == x[0][2]:
+                print("Successfully logged in!")
+            print(username,password)
         return render_template("login.html")
     
     @app.route('/register')
