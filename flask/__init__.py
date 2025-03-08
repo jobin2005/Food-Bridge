@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, url_for
 from database import *
 from datetime import datetime, timedelta
 
@@ -43,14 +43,22 @@ def create_app(test_config=None):
         return render_template("about.html")
     
     @app.route('/login', methods=['GET', 'POST'])
-    def signup():
+    def login():
         if request.method == "POST":
             username = request.form.get('username')
             password = request.form.get('password')
-            x = query(f"SELECT * FROM LOGIN WHERE USERNAME = '{username}'")
-            if password == x[0][2]:
-                print("Successfully logged in!")
-            print(username,password)
+
+        # 🔹 Fetch user from the database
+            user = query("SELECT ID, PASSWORD FROM LOGIN WHERE USERNAME = :1", (username,))
+        
+            if user:  # If user exists
+                stored_password = user[0][1]  # Get stored password from DB
+                if password == stored_password:  # Check password
+                    session['user_id'] = user[0][0]  # Store user ID in session
+                    return jsonify({"success": True})  # Send redirect URL
+
+            return jsonify({"success": False, "error": "Invalid username or password!"})  # Send error
+
         return render_template("login.html")
     
     @app.route('/register', methods=['GET', 'POST'])

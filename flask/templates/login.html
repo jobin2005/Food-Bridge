@@ -132,43 +132,33 @@
         </div>
     </div>
 
-    <!-- <script>
-        document.getElementById("login-form").addEventListener("submit", function (event) {
-            event.preventDefault();
-
-            let username = document.getElementById("username").value.trim();
-            let password = document.getElementById("password").value;
+    <script>
+        document.getElementById("login-form").addEventListener("submit", async function (event) {
+            event.preventDefault();  // Prevent form from submitting normally
+    
+            let formData = new FormData(this);  // Get form data
             let errorMessage = document.getElementById("error-message");
-
-            // Get registered users from localStorage
-            let users = JSON.parse(localStorage.getItem("users")) || {};
-
-            if (users[username]) {
-                if (users[username].password === password) {
-                    let role = users[username].role;
-                    errorMessage.style.color = "green";
-                    errorMessage.innerText = `Login successful! Redirecting to ${role} dashboard...`;
-
-                    setTimeout(() => {
-                        if (role === "Donor") {
-                            window.location.href = "donor";
-                        } else if (role === "Volunteer") {
-                            window.location.href = "Volunteer";
-                        } else if (role === "NGO") {
-                            window.location.href = "ngo";
-                        }
-                    }, 1500);
-                } else {
-                    errorMessage.innerText = "Incorrect password. Please try again.";
-                    errorMessage.style.color = "red";
-                }
+    
+            let response = await fetch("/login", {
+                method: "POST",
+                body: formData
+            });
+    
+            let result = await response.json();  // Get the JSON response
+    
+            if (result.success) {
+                errorMessage.style.color = "green";
+                errorMessage.innerText = "Login successful! Redirecting...";
+                setTimeout(() => {
+                    window.location.href = "/donor";  // Redirect to donation page
+                }, 1500);
             } else {
-                errorMessage.innerText = "User not found!";
+                errorMessage.innerText = result.error;  // Show error message
                 errorMessage.style.color = "red";
-
             }
         });
-    </script> -->
+    </script>
+    
 
 </body>
 
