@@ -30,20 +30,28 @@ class NonInsertionError(Exception):
     def __str__(self):
         return f"{self.message} (Error Code: {self.error_code})"
 
-def query(sql):
+def query(sql, params=None):
     if isinstance(sql, str) and sql.strip().upper().startswith("SELECT"):
         with oracledb.connect(user=env["USER"], password=env["PASS"], dsn=env["DSN"], config_dir=env["FILEPATH"], wallet_location=env["FILEPATH"], wallet_password=env["WLTPASS"]) as conn:
             with conn.cursor() as cursor:
-                cursor.execute(sql)
+                if params:
+                    cursor.execute(sql, params)  # ✅ Now supports parameters
+                else:
+                    cursor.execute(sql)
+
                 return cursor.fetchall()
     else:
-        raise NonQueryError("The given sql command is not a SELECT query", 400)
+        raise NonQueryError("The given SQL command is not a SELECT query", 400)
+
     
-def insert(sql):
+def insert(sql, params=None):
     if isinstance(sql, str) and sql.strip().upper().startswith("INSERT"):
         with oracledb.connect(user=env["USER"], password=env["PASS"], dsn=env["DSN"], config_dir=env["FILEPATH"], wallet_location=env["FILEPATH"], wallet_password=env["WLTPASS"]) as conn:
             with conn.cursor() as cursor:
-                cursor.execute(sql)
+                if params:
+                    cursor.execute(sql, params)  # ✅ Now supports parameters
+                else:
+                    cursor.execute(sql)
                 conn.commit()
     else:
         raise NonInsertionError("The given sql command is not a INSERT command", 400)

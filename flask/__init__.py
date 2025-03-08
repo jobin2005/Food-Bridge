@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from database import *
 from datetime import datetime, timedelta
 
@@ -53,9 +53,26 @@ def create_app(test_config=None):
             print(username,password)
         return render_template("login.html")
     
-    @app.route('/register')
+    @app.route('/register', methods=['GET', 'POST'])
     def register():
+        if request.method == "POST":
+            username = request.form.get('username')
+            password = request.form.get('password')
+
+            existing_user = query("SELECT COUNT(*) FROM LOGIN WHERE USERNAME = :1", (username,))  # ✅ Now works
+
+            if existing_user[0][0] > 0:  
+                return jsonify({"success": False, "error": "Username already exists. Choose another."})
+
+            new_id = query("SELECT NVL(MAX(ID), 0) + 1 FROM LOGIN")[0][0]  # Get max ID and increment
+
+        # 🔹 Step 3: Insert the new user with the generated ID
+            insert("INSERT INTO LOGIN (ID, USERNAME, PASSWORD) VALUES (:1, :2, :3)", (new_id, username, password))  # ✅ Now works
+
+            return jsonify({"success": True})  # Registration successful
+
         return render_template("register.html")
+
     
     @app.route('/feedback')
     def feedback():
@@ -106,4 +123,4 @@ def create_app(test_config=None):
 
 if __name__ == "__main__":
     app = create_app()
-    app.run()
+    app.run(debug=True)
