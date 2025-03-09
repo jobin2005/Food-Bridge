@@ -133,17 +133,17 @@
         <aside class="sidebar">
             <h2>FOOD BRIDGE</h2>
             <div class="menu">
-                <a href="donor.html">Dashboard</a>
-                <a href="Donor_profile.html">Profile</a>
-                <a href="feedback.html">Feedback</a>
-                <a href="support.html">Support</a>
-                <a href="mainpage.html">Log Out</a>
+                <a href="donor">Dashboard</a>
+                <a href="donor_profile">Profile</a>
+                <a href="feedback">Feedback</a>
+                <a href="support">Support</a>
+                <a href="/">Log Out</a>
             </div>
         </aside>
         <main class="content">
             <h1>Make a Donation</h1>
             <p class="welcome-message">Hello, <span id="donorName">Donor</span>! Thank you for your generosity.</p>
-            <form action="#" method="post">
+            <form id="donation-form" method="POST">
                 <div class="form-group">
                     <label for="itemName">Item Name:</label>
                     <input type="text" id="itemName" name="itemName" required>
@@ -173,7 +173,7 @@
         </main>
     </div>
 
-    <script>
+    <!-- <script>
         // Retrieve donor name from localStorage and display it
         let users = JSON.parse(localStorage.getItem("users")) || {};
         let loggedInUser = localStorage.getItem("loggedInUser"); // Store logged-in user when they sign in
@@ -181,6 +181,6 @@
         if (loggedInUser && users[loggedInUser]) {
             document.getElementById("donorName").textContent = users[loggedInUser].first_name;
         }
-    </script>
+    </script> -->
 </body>
 </html>
