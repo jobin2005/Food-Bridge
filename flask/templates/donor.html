@@ -173,14 +173,32 @@
         </main>
     </div>
 
-    <!-- <script>
-        // Retrieve donor name from localStorage and display it
-        let users = JSON.parse(localStorage.getItem("users")) || {};
-        let loggedInUser = localStorage.getItem("loggedInUser"); // Store logged-in user when they sign in
-
-        if (loggedInUser && users[loggedInUser]) {
-            document.getElementById("donorName").textContent = users[loggedInUser].first_name;
-        }
-    </script> -->
+    <script>
+        document.getElementById("donation-form").addEventListener("submit", async function (event) {
+            event.preventDefault();  // Prevent form from submitting normally
+        
+            let formData = new FormData(this);  // Get form data
+        
+            let response = await fetch("/donor", {
+                method: "POST",
+                body: formData
+            });
+        
+            let result = await response.json();  // Get JSON response
+        
+            let messageElement = document.createElement("p");  // Create new message element
+            messageElement.style.fontWeight = "bold";
+        
+            if (result.success) {
+                messageElement.style.color = "green";
+                messageElement.innerText = "✅ " + result.message;
+            } else {
+                messageElement.style.color = "red";
+                messageElement.innerText = "❌ Error: " + result.error;
+            }
+        
+            this.appendChild(messageElement);  // Append message below the form
+        });
+    </script>
 </body>
 </html>

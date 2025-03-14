@@ -1,8 +1,14 @@
 import os
 
 from flask import Flask, render_template, request, jsonify, session, url_for
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database import *
 from datetime import datetime, timedelta
+
+class User(UserMixin):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
 
 def create_app(test_config=None):
     # create and configure the app
@@ -11,6 +17,10 @@ def create_app(test_config=None):
         SECRET_KEY='dev',
         DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
     )
+
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = "login"
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
@@ -24,6 +34,13 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path)
     except OSError:
         pass
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        user_data = query("SELECT ID, USERNAME FROM LOGIN WHERE ID = :ID", {"ID": user_id})
+        if user_data:
+            return User(user_data[0][0], user_data[0][1])
+        return None
 
     # a simple page that says hello
     @app.route('/hello')
@@ -48,16 +65,18 @@ def create_app(test_config=None):
             username = request.form.get('username')
             password = request.form.get('password')
 
-        # 🔹 Fetch user from the database
-            user = query("SELECT ID, PASSWORD FROM LOGIN WHERE USERNAME = :1", (username,))
+            # Fetch user from the database
+            user_data = query("SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME AND PASSWORD = :PASSWORD", {"USERNAME": username, "PASSWORD": password})
         
-            if user:  # If user exists
-                stored_password = user[0][1]  # Get stored password from DB
+            if user_data:  # If user exists
+                user = User(user_data[0][0], user_data[0][1])
+                login_user(user)
+                stored_password = user_data[0][2]  # Get stored password from DB
                 if password == stored_password:  # Check password
-                    session['user_id'] = user[0][0]  # Store user ID in session
+                    session['user_id'] = user_data[0][0]  # Store user ID in session
                     return jsonify({"success": True})  # Send redirect URL
 
-            return jsonify({"success": False, "error": "Invalid username or password!"})  # Send error
+            return jsonify({"success": False, "error": "Invalid username or password!"})
 
         return render_template("login.html")
     
@@ -67,15 +86,14 @@ def create_app(test_config=None):
             username = request.form.get('username')
             password = request.form.get('password')
 
-            existing_user = query("SELECT COUNT(*) FROM LOGIN WHERE USERNAME = :1", (username,))  # ✅ Now works
+            existing_user = query("SELECT COUNT(*) FROM LOGIN WHERE USERNAME = :1", (username,))
 
             if existing_user[0][0] > 0:  
                 return jsonify({"success": False, "error": "Username already exists. Choose another."})
 
             new_id = query("SELECT NVL(MAX(ID), 0) + 1 FROM LOGIN")[0][0]  # Get max ID and increment
 
-        # 🔹 Step 3: Insert the new user with the generated ID
-            insert("INSERT INTO LOGIN (ID, USERNAME, PASSWORD) VALUES (:1, :2, :3)", (new_id, username, password))  # ✅ Now works
+            insert("INSERT INTO LOGIN (ID, USERNAME, PASSWORD) VALUES (:1, :2, :3)", (new_id, username, password))
 
             return jsonify({"success": True})  # Registration successful
 
@@ -93,17 +111,34 @@ def create_app(test_config=None):
     @app.route('/donor', methods=['GET', 'POST'])
     def donor():
         if request.method == "POST":
-            item_name = request.form.get('itemName')
-            quantity = request.form.get('quantity')
-            item_category = request.form.get('itemCategory')
-            donation_date = request.form.get('donationDate')
-            shelf_life = datetime.date(datetime.strptime(donation_date, '%Y-%m-%d') + timedelta(days=int(request.form.get('shelfLife'))))
-            x = query("SELECT DONATIONID FROM DONATION ORDER BY DONATIONID DESC")
-            dono_id = 101 if x == [] else x[0]+1
-            y = query("SELECT FOODID FROM FOOD ORDER BY FOODID DESC")
-            food_id = 101 if y == [] else y[0]+1
-            insert(f"INSERT INTO FOOD (FOODID,FOODNAME,FOODTYPE,QUANTITY,STATUS,SHELFLIFE) VALUES ({food_id},'{item_name}','{item_category}',{quantity},'ONHOLD',TO_DATE('{shelf_life}','YYYY-MM-DD'))")
-            print(query("SELECT * FROM FOOD"))
+            try:
+                item_name = request.form.get('itemName')
+                quantity = int(request.form.get('quantity'))  # Ensure integer
+                item_category = request.form.get('itemCategory')
+                donation_date = request.form.get('donationDate')
+                shelf_life_days = int(request.form.get('shelfLife'))
+
+                # Calculate shelf life (convert to proper date format)
+                donation_date_obj = datetime.strptime(donation_date, '%Y-%m-%d')
+                shelf_life = (donation_date_obj + timedelta(days=shelf_life_days)).strftime('%Y-%m-%d')
+
+                # Generate new DONATIONID
+                x = query("SELECT MAX(DONATIONID) FROM DONATION")
+                dono_id = 101 if not x or not x[0][0] else x[0][0] + 1
+
+                # Generate new FOODID
+                y = query("SELECT MAX(FOODID) FROM FOOD")
+                food_id = 101 if not y or not y[0][0] else y[0][0] + 1
+
+                # Insert into FOOD table (Using parameterized query)
+                insert("INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE) VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'))", 
+                    (food_id, item_name, item_category, quantity, 'ONHOLD', shelf_life))
+
+                return jsonify({"success": True, "message": "Donation successful!"})
+
+            except Exception as e:
+                return jsonify({"success": False, "error": str(e)})
+ 
         return render_template("donor.html")
     
     @app.route('/donor_profile')

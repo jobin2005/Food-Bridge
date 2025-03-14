@@ -35,7 +35,7 @@ def query(sql, params=None):
         with oracledb.connect(user=env["USER"], password=env["PASS"], dsn=env["DSN"], config_dir=env["FILEPATH"], wallet_location=env["FILEPATH"], wallet_password=env["WLTPASS"]) as conn:
             with conn.cursor() as cursor:
                 if params:
-                    cursor.execute(sql, params)  # ✅ Now supports parameters
+                    cursor.execute(sql, params)
                 else:
                     cursor.execute(sql)
 
@@ -49,11 +49,9 @@ def insert(sql, params=None):
         with oracledb.connect(user=env["USER"], password=env["PASS"], dsn=env["DSN"], config_dir=env["FILEPATH"], wallet_location=env["FILEPATH"], wallet_password=env["WLTPASS"]) as conn:
             with conn.cursor() as cursor:
                 if params:
-                    cursor.execute(sql, params)  # ✅ Now supports parameters
+                    cursor.execute(sql, params)
                 else:
                     cursor.execute(sql)
                 conn.commit()
     else:
         raise NonInsertionError("The given sql command is not a INSERT command", 400)
-    
-# print(query("SELECT * FROM FOOD"))
