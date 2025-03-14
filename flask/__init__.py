@@ -55,7 +55,9 @@ def create_app(test_config=None):
                 stored_password = user[0][1]  # Get stored password from DB
                 if password == stored_password:  # Check password
                     session['user_id'] = user[0][0]  # Store user ID in session
-                    return jsonify({"success": True})  # Send redirect URL
+                    role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(session['user_id'],))
+                    user_role = role[0][0]  # Extract role from the query result
+                    return jsonify({"success": True, "role": user_role})  # Send redirect URL
 
             return jsonify({"success": False, "error": "Invalid username or password!"})  # Send error
 
@@ -66,6 +68,8 @@ def create_app(test_config=None):
         if request.method == "POST":
             username = request.form.get('username')
             password = request.form.get('password')
+            role = request.form.get('role')
+            print(role)
 
             existing_user = query("SELECT COUNT(*) FROM LOGIN WHERE USERNAME = :1", (username,))  # ✅ Now works
 
@@ -73,10 +77,14 @@ def create_app(test_config=None):
                 return jsonify({"success": False, "error": "Username already exists. Choose another."})
 
             new_id = query("SELECT NVL(MAX(ID), 0) + 1 FROM LOGIN")[0][0]  # Get max ID and increment
+            print(new_id)
 
         # 🔹 Step 3: Insert the new user with the generated ID
-            insert("INSERT INTO LOGIN (ID, USERNAME, PASSWORD) VALUES (:1, :2, :3)", (new_id, username, password))  # ✅ Now works
-
+            insert("INSERT INTO LOGIN (ID, USERNAME, PASSWORD) VALUES (:1, :2, :3)", (new_id, username, password))
+            insert("INSERT INTO ALLUSERS (ID, ROLE) VALUES (:1, :2)", (new_id, role))# ✅ Now works
+        #inserting the role to ALLUSERS table
+            
+            
             return jsonify({"success": True})  # Registration successful
 
         return render_template("register.html")
