@@ -149,9 +149,17 @@
             if (result.success) {
                 errorMessage.style.color = "green";
                 errorMessage.innerText = "Login successful! Redirecting...";
-                setTimeout(() => {
-                    window.location.href = "/donor";  // Redirect to donation page
-                }, 1500);
+                
+                    if(result.role=='Donor'){
+                        window.location.href = "/donor";
+                      }
+                    else if(result.role == 'Volunteer'){
+                        window.location.href = "/volunteer";
+                    } 
+                    else{
+                        window.location.href = "/ngo";
+                    }
+                
             } else {
                 errorMessage.innerText = result.error;  // Show error message
                 errorMessage.style.color = "red";
