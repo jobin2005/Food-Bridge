@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Updation Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            background: url('bg3.jpg');
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin: 10px 0 5px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .radio-group, .checkbox-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .radio-group label, .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        input[type="radio"], input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .error-message {
+            color: red;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Update Your Profile</h1>
+        <form id="update-form">
+
+            <label><b>First Name</b></label>
+            <input type="text" id="first_name" name="first_name" placeholder="First Name" required>
+
+            <label><b>Last Name</b></label>
+            <input type="text" id="last_name" name="last_name" placeholder="Last Name">
+
+            <label><b>Date of Birth</b></label>
+            <input type="date" name="dob" id="dob">
+
+            <label><b>Gender</b></label>
+            <div class="radio-group">
+                <label><input type="radio" name="gender" value="Male" required> Male</label>
+                <label><input type="radio" name="gender" value="Female" required> Female</label>
+                <label><input type="radio" name="gender" value="Others" required> Others</label>
+            </div>
+
+            <label><b>Email</b></label>
+            <input type="email" id="email" name="email" placeholder="Email" required>
+
+            <label><b>Mobile Number</b></label>
+            <input type="tel" id="mobile" name="mobile" placeholder="Mobile Number" required pattern="\d{10}" title="Mobile number must be 10 digits.">
+
+            <label><b>State</b></label>
+            <input type="text" id="state" name="state" placeholder="State" required>
+
+            <label><b>District</b></label>
+            <input type="text" id="district" name="district" placeholder="District" required>
+
+            <label><b>Street Name</b></label>
+            <input type="text" id="street" name="street" placeholder="Street Name" required>
+
+            <label><b>House No/Locality</b></label>
+            <input type="text" id="house" name="house" placeholder="House No./Locality" required>
+
+            <label><b>Pincode</b></label>
+            <input type="text" id="pincode" name="pincode" placeholder="Pincode" required pattern="\d{6}" title="Pincode must be exactly 6 digits." oninput="validatePincode()">
+            <p id="pincodeError" class="error-message">Pincode must be exactly 6 digits.</p>
+
+            <label><b>Username</b></label>
+            <input type="text" id="username" name="username" placeholder="Username" required>
+
+            <p id="updationError" class="error-message"></p>
+
+            <div class="checkbox-group">
+                <label><input type="checkbox" required> Accept terms and conditions</label>
+            </div>
+
+            <button type="submit" class="btn">Update</button>
+        </form>
+    </div>
+
+    <script>
+
+        function validatePincode() {
+            var pincode = document.getElementById("pincode").value;
+            var pincodeError = document.getElementById("pincodeError");
+            var pincodePattern = /^\d{6}$/; 
+
+            pincodeError.style.display = pincodePattern.test(pincode) ? "none" : "block";
+        }
+
+        document.getElementById("update-form").addEventListener("submit", async function(event) {
+            event.preventDefault(); // Prevent default form submission
+        
+            let formData = new FormData(this);
+            let jsonData = {}; // Convert FormData to JSON
+        
+            formData.forEach((value, key) => {
+                jsonData[key] = value;
+            });
+        
+            try {
+                let response = await fetch("/update_user", {  // ✅ Correct route name
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",  // ✅ Send as JSON
+                    },
+                    body: JSON.stringify(jsonData),  // ✅ Send JSON data
+                });
+        
+                let result = await response.json(); // Get the JSON response
+        
+                if (result.success) {
+                    alert("Update successful!");
+                    setTimeout(() => {
+                        window.location.href = "/donor_profile"; // Redirect after success
+                    }, 1500);
+                } else {
+                    document.getElementById("updationError").innerText = result.error;
+                    document.getElementById("updationError").style.display = "block";
+                }
+            } catch (error) {
+                console.error("Error updating profile:", error);
+                document.getElementById("updationError").innerText = "An error occurred. Please try again.";
+                document.getElementById("updationError").style.display = "block";
+            }
+        });
+        
+        
+        async function loadProfile() {
+            try {
+                let response = await fetch("/get_profile");
+                let data = await response.json();
+        
+                if (data.error) {
+                    document.getElementById("profileError").innerText = data.error;
+                    return;
+                }
+        
+                // ✅ Prefill text inputs
+                document.getElementById("first_name").value = data.fname;
+                document.getElementById("last_name").value = data.lname;
+                document.getElementById("email").value = data.email;
+                document.getElementById("mobile").value = data.phone;
+                document.getElementById("state").value = data.state;
+                document.getElementById("district").value = data.district;
+                document.getElementById("street").value = data.street;
+                document.getElementById("house").value = data.house;
+                document.getElementById("pincode").value = data.pincode;
+                document.getElementById("username").value = data.username; // ✅ Fix undefined variable issue
+        
+                // ✅ Prefill Date of Birth
+                document.getElementById("dob").value = data.dob;
+        
+                // ✅ Prefill gender (radio button)
+                let genderOptions = document.getElementsByName("gender"); // Get all gender radio buttons
+                genderOptions.forEach(radio => {
+                    if (radio.value.toLowerCase().trim() === data.gender.toLowerCase().trim()) {
+                        radio.checked = true; // ✅ Select the correct radio button
+                        console.log("Checked:", radio.value); // Debugging
+                    }
+                });
+        
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+            }
+        }
+        
+        // ✅ Load profile when page loads
+        window.onload = loadProfile;
+        
+
+    </script>
+</body>
+</html>

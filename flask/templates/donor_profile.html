@@ -92,18 +92,20 @@
 
   
             <div class="details-list" id="profile-info">
+                <li><strong>userame:</strong> <span id="username"></span></li>
                 <li><strong>Name:</strong> <span id="name"></span></li>
                 <li><strong>Email:</strong> <span id="email"></span></li>
                 <li><strong>Phone:</strong> <span id="phone"></span></li>
                 <li><strong>Gender:</strong> <span id="gender"></span></li>
                 <li><strong>Age:</strong> <span id="age"></span></li>
+                <li><strong>Address:</strong> <span id="address"></span></li>
                 <li><strong>Total Donations Made:</strong> 52</li>
                 <li><strong>Last Donation Date:</strong> December 15, 2024</li>
-                <li><strong>Preferred Cause:</strong> Education for underprivileged children</li>
             </div>
             
       
-        <button class="update-btn">Update Profile</button>
+            <button class="update-btn" onclick="window.location.href='/update_profile'">Update Profile</button>
+
     </section>
 
     <div class="footer">
@@ -121,12 +123,28 @@
                     return;
                 }
 
+
+                let dobDate = new Date(data.dob);  // Convert string to Date object
+                let today = new Date();  // Get current date
+
+                let age = today.getFullYear() - dobDate.getFullYear();
+                let monthDiff = today.getMonth() - dobDate.getMonth();
+                let dayDiff = today.getDate() - dobDate.getDate();
+
+                // If birthday hasn't occurred this year, subtract 1 from age
+                if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                    age--;
+                }
+
+
                 // Display user data
+                document.getElementById("username").innerText = data.username;
                 document.getElementById("name").innerText = data.fname+" "+data.lname;
                 document.getElementById("email").innerText = data.email;
                 document.getElementById("phone").innerText = data.phone;
                 document.getElementById("gender").innerText = data.gender;
-                document.getElementById("age").innerText = data.age;
+                document.getElementById("age").innerText = age;
+                document.getElementById("address").innerText = data.house+","+data.street+","+data.district+","+data.state+","+data.pincode;
             } catch (error) {
                 console.error("Error fetching profile:", error);
             }

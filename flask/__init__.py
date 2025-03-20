@@ -99,6 +99,16 @@ def create_app(test_config=None):
             
             insert("INSERT INTO DONATOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
             
+            
+            #Inserting the address details of the user to their repective Tables
+            state = request.form.get('state')
+            district = request.form.get('district')
+            street = request.form.get('street')
+            house = request.form.get('house')
+            pincode = request.form.get('pincode')
+            
+            #Inserting to table(Table is DONATOR)
+            insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",(Add_id, state, district, street, house, pincode))
             return jsonify({"success": True})  
 
         return render_template("register.html")
@@ -159,32 +169,86 @@ def create_app(test_config=None):
                 return jsonify({"error": "User not logged in"}), 401
 
             # Fetch user profile from database
-            profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB FROM DONATOR WHERE ID = :1", (user_id,))
-
-            if not profile_data:
+            profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB, ADDRESSID FROM DONATOR WHERE ID = :1", (user_id,))
+            add_id = profile_data[0][6]
+            address_data = query("SELECT STATE, DISTRICT, STREET, HOUSE, PINCODE FROM ADDRESS WHERE ADDRESSID = :1", (add_id,))
+            username= query("SELECT USERNAME FROM LOGIN WHERE ID = :1", (user_id,))
+            if not profile_data and not address_data:
                 return jsonify({"error": "User not found"}), 404
             
             
             dob_str = profile_data[0][5].strftime('%Y-%m-%d')  # Convert SQL date to string
-            dob = datetime.strptime(dob_str, '%Y-%m-%d')  # Convert to datetime object
+            # dob = datetime.strptime(dob_str, '%Y-%m-%d')  # Convert to datetime object
 
-            # Calculate age
-            today = datetime.today()
-            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            # # Calculate age
+            # today = datetime.today()
+            # age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
             
             # Convert to dictionary
             user_profile = {
+                "username": username[0][0],
                 "fname": profile_data[0][0],
                 "lname":profile_data[0][1],
                 "email": profile_data[0][2],
                 "phone": profile_data[0][3],
                 "gender": profile_data[0][4],
-                "age": age
+                "dob": dob_str,
+                "state": address_data[0][0],
+                "district": address_data[0][1],
+                "street": address_data[0][2],
+                "house": address_data[0][3],
+                "pincode": address_data[0][4]
             }
             
             return jsonify(user_profile)
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        
+        
+    @app.route('/update_user', methods=['PUT'])
+    def update_user():
+        try:
+            user_id = session.get('user_id')
+            if not user_id:
+                return jsonify({"success": False, "error": "User not logged in"}), 401
+
+            # ✅ Ensure data is received correctly
+            if request.content_type == 'application/json':
+                data = request.json  # ✅ JSON data for PUT
+            else:
+                data = request.form  # ✅ Form data for POST
+
+            new_fname = data.get('first_name')
+            new_lname = data.get('last_name')
+            new_gender = data.get('gender')
+            new_dob = data.get('dob')
+            new_phone = data.get('mobile')
+            new_email = data.get('email')
+            new_username = data.get('username')
+            new_state = data.get('state')
+            new_district = data.get('district')
+            new_street = data.get('street')
+            new_house = data.get('house')
+            new_pincode = data.get('pincode')
+
+            # ✅ Extract ADDRESSID properly
+            Add_id = query("SELECT ADDRESSID FROM DONATOR WHERE ID = :1", (user_id,))
+            if not Add_id:
+                return jsonify({"success": False, "error": "Address ID not found"}), 404
+            Add_id = Add_id[0][0]  # ✅ Extract first value
+
+            # ✅ Update all fields
+            update("UPDATE LOGIN SET USERNAME = :1 WHERE ID = :2", (new_username, user_id))
+            update("UPDATE DONATOR SET FN = :1, LN = :2, GENDER = :3, DOB = TO_DATE(:4, 'YYYY-MM-DD'), PHONE = :5, EMAIL = :6 WHERE ID = :7",
+                (new_fname, new_lname, new_gender, new_dob, new_phone, new_email, user_id))
+            update("UPDATE ADDRESS SET STATE = :1, DISTRICT = :2, STREET = :3, HOUSE = :4, PINCODE = :5 WHERE ADDRESSID = :6",
+                (new_state, new_district, new_street, new_house, new_pincode, Add_id))
+
+            return jsonify({"success": True, "message": "User updated successfully"})
+
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500  # ✅ Return error details
+
     
     @app.route('/ngo')
     def ngo():
@@ -201,6 +265,11 @@ def create_app(test_config=None):
     @app.route('/volunteer_profile')
     def volunteer_profile():
         return render_template("volunteer_profile.html")
+    
+    @app.route('/update_profile')
+    def update_profile():
+        return render_template("update_profile.html")
+    
     @app.route('/logout')
     def logout():
         session.clear()  # ✅ Clears session data
