@@ -48,18 +48,18 @@ def create_app(test_config=None):
             username = request.form.get('username')
             password = request.form.get('password')
 
-        # 🔹 Fetch user from the database
+            #Fetch user from the database
             user = query("SELECT ID, PASSWORD FROM LOGIN WHERE USERNAME = :1", (username,))
         
             if user:  # If user exists
-                stored_password = user[0][1]  # Get stored password from DB
-                if password == stored_password:  # Check password
-                    session['user_id'] = user[0][0]  # Store user ID in session
+                stored_password = user[0][1]  
+                if password == stored_password:  # Checking password
+                    session['user_id'] = user[0][0]  # Store user ID in session(Did this so that this sesion ID can be used to access the user details more quickly)
                     role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(session['user_id'],))
-                    user_role = role[0][0]  # Extract role from the query result
-                    return jsonify({"success": True, "role": user_role})  # Send redirect URL
+                    user_role = role[0][0]  
+                    return jsonify({"success": True, "role": user_role})  # Search the role from the DB and redirects to the pge accordingly
 
-            return jsonify({"success": False, "error": "Invalid username or password!"})  # Send error
+            return jsonify({"success": False, "error": "Invalid username or password!"}) 
 
         return render_template("login.html")
     
@@ -71,22 +71,35 @@ def create_app(test_config=None):
             role = request.form.get('role')
             print(role)
 
-            existing_user = query("SELECT COUNT(*) FROM LOGIN WHERE USERNAME = :1", (username,))  # ✅ Now works
+            existing_user = query("SELECT COUNT(*) FROM LOGIN WHERE USERNAME = :1", (username,))  
 
             if existing_user[0][0] > 0:  
                 return jsonify({"success": False, "error": "Username already exists. Choose another."})
-
-            new_id = query("SELECT NVL(MAX(ID), 0) + 1 FROM LOGIN")[0][0]  # Get max ID and increment
+            
+            
+            #Creating a new id for a new user
+            new_id = query("SELECT NVL(MAX(ID), 0) + 1 FROM LOGIN")[0][0]  #Incrementing Code
             print(new_id)
 
-        #Insert the new user with the generated ID
+            #Insert new user with ID(TO Table LOGIN)
             insert("INSERT INTO LOGIN (ID, USERNAME, PASSWORD) VALUES (:1, :2, :3)", (new_id, username, password))
-        #inserting the role to ALLUSERS table
+            #Inserting the roles of the users(TO Table ALLUSERS)
             insert("INSERT INTO ALLUSERS (ID, ROLE) VALUES (:1, :2)", (new_id, role))
         
+            #Inserting the personal Details of the user to thier respective Tables
             
+            #For DONOR(Table is DONATOR)
+            Fname = request.form.get('first_name')
+            Lname = request.form.get('last_name')
+            Gender = request.form.get('gender')
+            Dob = request.form.get('dob')
+            Phone = request.form.get('mobile')
+            Email = request.form.get('email')
+            Add_id = 100+new_id
             
-            return jsonify({"success": True})  # Registration successful
+            insert("INSERT INTO DONATOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
+            
+            return jsonify({"success": True})  
 
         return render_template("register.html")
 
@@ -136,6 +149,43 @@ def create_app(test_config=None):
     def donor_profile():
         return render_template("donor_profile.html")
     
+    @app.route('/get_profile', methods=['GET'])
+    def get_profile():
+        try:
+            user_id = session.get('user_id')  # Get user ID from session
+            print("Session User ID:", session.get('user_id'))
+
+            if not user_id:
+                return jsonify({"error": "User not logged in"}), 401
+
+            # Fetch user profile from database
+            profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB FROM DONATOR WHERE ID = :1", (user_id,))
+
+            if not profile_data:
+                return jsonify({"error": "User not found"}), 404
+            
+            
+            dob_str = profile_data[0][5].strftime('%Y-%m-%d')  # Convert SQL date to string
+            dob = datetime.strptime(dob_str, '%Y-%m-%d')  # Convert to datetime object
+
+            # Calculate age
+            today = datetime.today()
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            
+            # Convert to dictionary
+            user_profile = {
+                "fname": profile_data[0][0],
+                "lname":profile_data[0][1],
+                "email": profile_data[0][2],
+                "phone": profile_data[0][3],
+                "gender": profile_data[0][4],
+                "age": age
+            }
+            
+            return jsonify(user_profile)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
     @app.route('/ngo')
     def ngo():
         return render_template("ngo.html")
@@ -151,6 +201,11 @@ def create_app(test_config=None):
     @app.route('/volunteer_profile')
     def volunteer_profile():
         return render_template("volunteer_profile.html")
+    @app.route('/logout')
+    def logout():
+        session.clear()  # ✅ Clears session data
+        return jsonify({"success": True, "message": "Logged out successfully"})
+
 
     return app
 

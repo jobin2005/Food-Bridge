@@ -90,19 +90,50 @@
         <h4>Donor Details</h4>
         <p>View your donation history and profile details below.</p>
 
-        <ul class="details-list">
-            <li><strong>Donor Name:</strong> John Doe</li>
-            <li><strong>Email:</strong> johndoe@mail.com</li>
-            <li><strong>Phone:</strong> +1 987 654 321</li>
-            <li><strong>Total Donations Made:</strong> 52</li>
-            <li><strong>Last Donation Date:</strong> December 15, 2024</li>
-            <li><strong>Preferred Cause:</strong> Education for underprivileged children</li>
-        </ul>
+  
+            <div class="details-list" id="profile-info">
+                <li><strong>Name:</strong> <span id="name"></span></li>
+                <li><strong>Email:</strong> <span id="email"></span></li>
+                <li><strong>Phone:</strong> <span id="phone"></span></li>
+                <li><strong>Gender:</strong> <span id="gender"></span></li>
+                <li><strong>Age:</strong> <span id="age"></span></li>
+                <li><strong>Total Donations Made:</strong> 52</li>
+                <li><strong>Last Donation Date:</strong> December 15, 2024</li>
+                <li><strong>Preferred Cause:</strong> Education for underprivileged children</li>
+            </div>
+            
+      
         <button class="update-btn">Update Profile</button>
     </section>
 
     <div class="footer">
         <p>&copy; 2025 Food Bridge Foundation. All rights reserved.</p>
     </div>
+    
+    <script>
+        async function loadProfile() {
+            try {
+                let response = await fetch("/get_profile");  // Call Flask API
+                let data = await response.json();  // Convert response to JSON
+                
+                if (data.error) {
+                    document.getElementById("profile-info").innerHTML = `<p>${data.error}</p>`;
+                    return;
+                }
+
+                // Display user data
+                document.getElementById("name").innerText = data.fname+" "+data.lname;
+                document.getElementById("email").innerText = data.email;
+                document.getElementById("phone").innerText = data.phone;
+                document.getElementById("gender").innerText = data.gender;
+                document.getElementById("age").innerText = data.age;
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+            }
+        }
+
+        // Load profile data when the page loads
+        window.onload = loadProfile;
+    </script>
 </body>
 </html>
