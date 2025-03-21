@@ -63,13 +63,25 @@ def create_app(test_config=None):
 
         return render_template("login.html")
     
+    @app.route('/select_role')
+    def select_role():
+        return render_template("select_role.html")
+    
+    @app.route('/ngo_register')
+    def ngo_register():
+        return render_template("ngo_register.html")
+    
     @app.route('/register', methods=['GET', 'POST'])
     def register():
+        role = request.args.get('role', '')
         if request.method == "POST":
             username = request.form.get('username')
             password = request.form.get('password')
-            role = request.form.get('role')
+            role = request.form.get('role', '') 
             print(role)
+            
+            if not role:  # If role is still missing, return an error
+                return jsonify({"success": False, "error": "Role is missing!"})
 
             existing_user = query("SELECT COUNT(*) FROM LOGIN WHERE USERNAME = :1", (username,))  
 
@@ -87,28 +99,28 @@ def create_app(test_config=None):
             insert("INSERT INTO ALLUSERS (ID, ROLE) VALUES (:1, :2)", (new_id, role))
         
             #Inserting the personal Details of the user to thier respective Tables
-            
-            #For DONOR(Table is DONATOR)
-            Fname = request.form.get('first_name')
-            Lname = request.form.get('last_name')
-            Gender = request.form.get('gender')
-            Dob = request.form.get('dob')
-            Phone = request.form.get('mobile')
-            Email = request.form.get('email')
-            Add_id = 100+new_id
-            
-            insert("INSERT INTO DONATOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
-            
-            
-            #Inserting the address details of the user to their repective Tables
-            state = request.form.get('state')
-            district = request.form.get('district')
-            street = request.form.get('street')
-            house = request.form.get('house')
-            pincode = request.form.get('pincode')
-            
-            #Inserting to table(Table is DONATOR)
-            insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",(Add_id, state, district, street, house, pincode))
+            if role.lower() == "donor":
+                #For DONOR(Table is DONATOR)
+                Fname = request.form.get('first_name')
+                Lname = request.form.get('last_name')
+                Gender = request.form.get('gender')
+                Dob = request.form.get('dob')
+                Phone = request.form.get('mobile')
+                Email = request.form.get('email')
+                Add_id = 100+new_id
+                
+                insert("INSERT INTO DONATOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
+                
+                
+                #Inserting the address details of the user to their repective Tables
+                state = request.form.get('state')
+                district = request.form.get('district')
+                street = request.form.get('street')
+                house = request.form.get('house')
+                pincode = request.form.get('pincode')
+                
+                #Inserting to table(Table is ADDRESS)
+                insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",(Add_id, state, district, street, house, pincode))
             return jsonify({"success": True})  
 
         return render_template("register.html")
