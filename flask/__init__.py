@@ -178,12 +178,6 @@ def create_app(test_config=None):
             
             
             dob_str = profile_data[0][5].strftime('%Y-%m-%d')  # Convert SQL date to string
-            # dob = datetime.strptime(dob_str, '%Y-%m-%d')  # Convert to datetime object
-
-            # # Calculate age
-            # today = datetime.today()
-            # age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-            
             # Convert to dictionary
             user_profile = {
                 "username": username[0][0],
@@ -230,6 +224,12 @@ def create_app(test_config=None):
             new_street = data.get('street')
             new_house = data.get('house')
             new_pincode = data.get('pincode')
+            
+            existing_user = query("SELECT COUNT(*) FROM LOGIN WHERE USERNAME = :1 AND ID != :2", (new_username, user_id))
+            
+            
+            if existing_user[0][0] > 0:
+                 return jsonify({"success": False, "error": "Username already exists. Choose another."})
 
             # ✅ Extract ADDRESSID properly
             Add_id = query("SELECT ADDRESSID FROM DONATOR WHERE ID = :1", (user_id,))
