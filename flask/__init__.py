@@ -1,8 +1,14 @@
 import os
 
 from flask import Flask, render_template, request, jsonify, session, url_for
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database import *
 from datetime import datetime, timedelta
+
+class User(UserMixin):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
 
 def create_app(test_config=None):
     # create and configure the app
@@ -11,6 +17,10 @@ def create_app(test_config=None):
         SECRET_KEY='dev',
         DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
     )
+    
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = "login"
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
@@ -25,6 +35,13 @@ def create_app(test_config=None):
     except OSError:
         pass
 
+    @login_manager.user_loader
+    def load_user(user_id):
+        user_data = query("SELECT ID, USERNAME FROM LOGIN WHERE ID = :ID", {"ID": user_id})
+        if user_data:
+            return User(user_data[0][0], user_data[0][1])
+        return None
+    
     # a simple page that says hello
     @app.route('/hello')
     def hello():
@@ -48,7 +65,18 @@ def create_app(test_config=None):
             username = request.form.get('username')
             password = request.form.get('password')
 
+            # Sreedeep's code
+            # user_data = query("SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME AND PASSWORD = :PASSWORD", {"USERNAME": username, "PASSWORD": password})
+        
+            # if user_data:  # If user exists
+            #     user = User(user_data[0][0], user_data[0][1])
+            #     login_user(user)
+            #     stored_password = user_data[0][2]  # Get stored password from DB
+            #     if password == stored_password:  # Check password
+            #         session['user_id'] = user_data[0][0]  # Store user ID in session
+            #         return jsonify({"success": True})  # Send redirect URL
             #Fetch user from the database
+            
             user = query("SELECT ID, PASSWORD FROM LOGIN WHERE USERNAME = :1", (username,))
         
             if user:  # If user exists
@@ -174,7 +202,7 @@ def create_app(test_config=None):
     @app.route('/get_profile', methods=['GET'])
     def get_profile():
         try:
-            user_id = session.get('user_id')  # Get user ID from session
+            user_id = session.get('user_id') 
             print("Session User ID:", session.get('user_id'))
 
             if not user_id:
