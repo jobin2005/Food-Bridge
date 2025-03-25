@@ -87,9 +87,9 @@ def create_app(test_config=None):
         logout_user()
         return jsonify({"success": True, "message": "Logged out successfully"})
     
-    @app.route('/select_role')
+    @app.route('/signup')
     def select_role():
-        return render_template("select_role.html")
+        return render_template("signup.html")
     
     @app.route('/ngo_register')
     def ngo_register():
@@ -97,11 +97,10 @@ def create_app(test_config=None):
     
     @app.route('/register', methods=['GET', 'POST'])
     def register():
-        role = request.args.get('role', '')
         if request.method == "POST":
             username = request.form.get('username')
             password = request.form.get('password')
-            role = request.form.get('role', '') 
+            role = request.form.get('role-input') 
             
             if not role:  # If role is still missing, return an error
                 return jsonify({"success": False, "error": "Role is missing!"})
