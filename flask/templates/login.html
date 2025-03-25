@@ -149,9 +149,20 @@
             if (result.success) {
                 errorMessage.style.color = "green";
                 errorMessage.innerText = "Login successful! Redirecting...";
-                setTimeout(() => {
-                    window.location.href = "/donor";  // Redirect to donation page
-                }, 1500);
+                
+                    if (result.role=='donor') {
+                        window.location.href = "/donor";
+                      }
+                    else if (result.role == 'volunteer') {
+                        window.location.href = "/volunteer";
+                    } 
+                    else if (result.role == 'ngo') {
+                        window.location.href = "/ngo";
+                    } else {
+                        errorMessage.innerText = 'Invalid Role';  // Show error message
+                        errorMessage.style.color = "red";
+                    }
+                
             } else {
                 errorMessage.innerText = result.error;  // Show error message
                 errorMessage.style.color = "red";

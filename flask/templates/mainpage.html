@@ -208,7 +208,8 @@
         <nav>
             <a href="about">About Us</a>
             <a href="contact">Contact Us</a>
-            <a href="#donate" class="donate-btn">Donate</a>
+            <a href="{% if current_user.is_authenticated %}{{ url_for('donor') }}{% else %}{{ url_for('login') }}{% endif %}" class="donate-btn">Donate</a>
+
         </nav>
     </header>
     
