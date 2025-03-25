@@ -63,3 +63,19 @@ def insert(sql, params=None):
                 conn.commit()
     else:
         raise NonInsertionError("The given sql command is not a INSERT command", 400)
+    
+def update(sql, params=None):
+    if isinstance(sql, str) and sql.strip().upper().startswith("UPDATE"):
+        with oracledb.connect(user=env["USER"], password=env["PASS"], dsn=env["DSN"], config_dir=env["FILEPATH"], wallet_location=env["FILEPATH"], wallet_password=env["WLTPASS"]) as conn:
+            with conn.cursor() as cursor:
+                if params:
+                    cursor.execute(sql, params)
+                else:
+                    cursor.execute(sql)
+                conn.commit()  # ✅ Ensure changes are saved
+    else:
+        raise NonUpdateError("The given SQL command is not an UPDATE command", 400)
+
+
+    
+# print(query("SELECT * FROM FOOD"))

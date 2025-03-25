@@ -128,7 +128,7 @@
                 <button type="submit" class="signin-btn">Sign in</button>
                 <p class="register-text">New? <a href="register" class="register-link">Register now</a></p>
             </form>
-            <p id="error-message"></p>
+            <p id="output-message"></p>
         </div>
     </div>
 
@@ -137,7 +137,7 @@
             event.preventDefault();  // Prevent form from submitting normally
     
             let formData = new FormData(this);  // Get form data
-            let errorMessage = document.getElementById("error-message");
+            let outputMessage = document.getElementById("output-message");
     
             let response = await fetch("/login", {
                 method: "POST",
@@ -147,8 +147,8 @@
             let result = await response.json();  // Get the JSON response
     
             if (result.success) {
-                errorMessage.style.color = "green";
-                errorMessage.innerText = "Login successful! Redirecting...";
+                outputMessage.style.color = "green";
+                outputMessage.innerText = "Login successful! Redirecting...";
                 
                     if (result.role=='donor') {
                         window.location.href = "/donor";
@@ -159,13 +159,13 @@
                     else if (result.role == 'ngo') {
                         window.location.href = "/ngo";
                     } else {
-                        errorMessage.innerText = 'Invalid Role';  // Show error message
-                        errorMessage.style.color = "red";
+                        outputMessage.innerText = 'Invalid Role';  // Show error message
+                        outputMessage.style.color = "red";
                     }
                 
             } else {
-                errorMessage.innerText = result.error;  // Show error message
-                errorMessage.style.color = "red";
+                outputMessage.innerText = result.error;  // Show error message
+                outputMessage.style.color = "red";
             }
         });
     </script>
