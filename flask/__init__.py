@@ -95,10 +95,11 @@ def create_app(test_config=None):
     
     @app.route('/register', methods=['GET', 'POST'])
     def register():
+        role = request.args.get('role', '')
         if request.method == "POST":
             username = request.form.get('username')
             password = request.form.get('password')
-            role = request.form.get('role-input') 
+            role = request.form.get('role', '') 
             
             if not role:  # If role is still missing, return an error
                 return jsonify({"success": False, "error": "Role is missing!"})
