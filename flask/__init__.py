@@ -88,9 +88,6 @@ def create_app(test_config=None):
         logout_user()
         return jsonify({"success": True, "message": "Logged out successfully"})
     
-    @app.route('/signup')
-    def select_role():
-        return render_template("signup.html")
     
     @app.route('/ngo_register')
     def ngo_register():
@@ -299,6 +296,10 @@ def create_app(test_config=None):
     @app.route('/volunteer_profile')
     def volunteer_profile():
         return render_template("volunteer_profile.html")
+    
+    @app.route('/select_role')
+    def select_role():
+        return render_template("select_role.html")
     
     @app.route('/update_profile')
     def update_profile():
