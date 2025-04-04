@@ -298,12 +298,13 @@ def create_app(test_config=None):
     @app.route('/volunteer_profile')
     def volunteer_profile():
         return render_template("volunteer_profile.html")
-    
+
     @app.route('/update_profile')
     def update_profile():
         return render_template("update_profile.html")
 
     return app
+
 
 
 if __name__ == "__main__":
