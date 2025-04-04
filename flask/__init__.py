@@ -6,40 +6,27 @@ from database import *
 from datetime import datetime, timedelta
 
 class User(UserMixin):
-    def __init__(self, id, username):
+    def __init__(self, id, username, role):
         self.id = id
         self.username = username
+        self.role = role
 
-def create_app(test_config=None):
+def create_app():
     # create and configure the app
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__)
     app.config.from_mapping(
         SECRET_KEY='dev',
-        DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
     )
 
     login_manager = LoginManager()
     login_manager.init_app(app)
     login_manager.login_view = "login"
 
-    if test_config is None:
-        # load the instance config, if it exists, when not testing
-        app.config.from_pyfile('config.py', silent=True)
-    else:
-        # load the test config if passed in
-        app.config.from_mapping(test_config)
-
-    # ensure the instance folder exists
-    try:
-        os.makedirs(app.instance_path)
-    except OSError:
-        pass
-
     @login_manager.user_loader
     def load_user(user_id):
-        user_data = query("SELECT ID, USERNAME FROM LOGIN WHERE ID = :ID", {"ID": user_id})
+        user_data = query("SELECT ALLUSERS.ID, USERNAME, ROLE FROM LOGIN, ALLUSERS WHERE LOGIN.ID = ALLUSERS.ID AND LOGIN.ID = :ID", {"ID": user_id})
         if user_data:
-            return User(user_data[0][0], user_data[0][1])
+            return User(user_data[0][0], user_data[0][1], user_data[0][2])
         return None
 
     # a simple page that says hello
@@ -66,15 +53,15 @@ def create_app(test_config=None):
             password = request.form.get('password')
 
             user_data = query("SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME AND PASSWORD = :PASSWORD", {"USERNAME": username, "PASSWORD": password})
+
+            user_role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(user_data[0][0],))[0][0]
         
             if user_data:  # If user exists
-                user = User(user_data[0][0], user_data[0][1])
-                login_user(user, remember=True)
                 stored_password = user_data[0][2]  # Get stored password from DB
                 if password == stored_password:  # Check password
-                    session['user_id'] = user_data[0][0]  # Store user ID in session
-                    role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(session['user_id'],))
-                    user_role = role[0][0]  
+                    user = User(user_data[0][0], user_data[0][1], user_role)
+                    login_user(user, remember=True)
+                    session['user_id'] = user_data[0][0]  # Store user ID in session  
                     return jsonify({"success": True, "role": user_role})  # Search the role from the DB and redirects to the pge accordingly
             return jsonify({"success": False, "error": "Invalid username or password!"}) 
         return render_template("login.html", user=current_user)
@@ -130,7 +117,6 @@ def create_app(test_config=None):
                 
                 insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
                 
-                
                 #Inserting the address details of the user to their repective Tables
                 state = request.form.get('state')
                 district = request.form.get('district')
@@ -156,6 +142,8 @@ def create_app(test_config=None):
     @app.route('/donor', methods=['GET', 'POST'])
     @login_required
     def donor():
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        user_fn = query("SELECT FN FROM DONOR WHERE ID = :ID",{"ID":current_user.id})[0][0]
         if request.method == "POST":
             try:
                 item_name = request.form.get('itemName')
@@ -186,17 +174,18 @@ def create_app(test_config=None):
             except Exception as e:
                 return jsonify({"success": False, "error": str(e)})
  
-        return render_template("donor.html")
+        return render_template("donor.html", current_date=current_date, user_fn=user_fn)
     
     @app.route('/donor_profile')
     def donor_profile():
         return render_template("donor_profile.html")
     
     @app.route('/get_profile', methods=['GET'])
+    @login_required
     def get_profile():
         try:
-            user_id = session.get('user_id') 
-            print("Session User ID:", session.get('user_id'))
+            user_id = current_user.id
+            print("Session User ID:", user_id)
 
             if not user_id:
                 return jsonify({"error": "User not logged in"}), 401
@@ -209,6 +198,9 @@ def create_app(test_config=None):
             if not profile_data and not address_data:
                 return jsonify({"error": "User not found"}), 404
             
+            dono_count = query("SELECT COUNT(*) FROM DONATION WHERE DONORID = :1",(user_id,))[0][0]
+            
+            last_dono = query("SELECT TO_CHAR(DONATIONDATE, 'Month DD, YYYY') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION WHERE DONORID = :1)",(user_id,))[0][0]
             
             dob_str = profile_data[0][5].strftime('%Y-%m-%d')  # Convert SQL date to string
             # Convert to dictionary
@@ -224,7 +216,9 @@ def create_app(test_config=None):
                 "district": address_data[0][1],
                 "street": address_data[0][2],
                 "house": address_data[0][3],
-                "pincode": address_data[0][4]
+                "pincode": address_data[0][4],
+                "total_dono": dono_count,
+                "last_dono": last_dono
             }
             
             return jsonify(user_profile)

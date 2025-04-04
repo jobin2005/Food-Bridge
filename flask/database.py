@@ -83,7 +83,3 @@ def update(sql, params=None):
                 conn.commit()  # ✅ Ensure changes are saved
     else:
         raise NonUpdateError("The given SQL command is not an UPDATE command", 400)
-
-
-    
-# print(query("SELECT * FROM FOOD"))
