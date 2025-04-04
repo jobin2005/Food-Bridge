@@ -38,12 +38,20 @@ class NonUpdateError(Exception):
     def __str__(self):
         return f"{self.args[0]} (Error Code: {self.error_code})"
 
+class NonUpdateError(Exception):
+    def __init__(self, message, error_code):
+        super().__init__(message)
+        self.error_code = error_code
+
+    def __str__(self):
+        return f"{self.args[0]} (Error Code: {self.error_code})"
+
 def query(sql, params=None):
     if isinstance(sql, str) and sql.strip().upper().startswith("SELECT"):
         with oracledb.connect(user=env["USER"], password=env["PASS"], dsn=env["DSN"], config_dir=env["FILEPATH"], wallet_location=env["FILEPATH"], wallet_password=env["WLTPASS"]) as conn:
             with conn.cursor() as cursor:
                 if params:
-                    cursor.execute(sql, params)  # ✅ Now supports parameters
+                    cursor.execute(sql, params)
                 else:
                     cursor.execute(sql)
 
@@ -57,7 +65,7 @@ def insert(sql, params=None):
         with oracledb.connect(user=env["USER"], password=env["PASS"], dsn=env["DSN"], config_dir=env["FILEPATH"], wallet_location=env["FILEPATH"], wallet_password=env["WLTPASS"]) as conn:
             with conn.cursor() as cursor:
                 if params:
-                    cursor.execute(sql, params)  # ✅ Now supports parameters
+                    cursor.execute(sql, params)
                 else:
                     cursor.execute(sql)
                 conn.commit()

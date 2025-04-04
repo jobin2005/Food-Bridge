@@ -208,7 +208,8 @@
         <nav>
             <a href="about">About Us</a>
             <a href="contact">Contact Us</a>
-            <a href="#donate" class="donate-btn">Donate</a>
+            <a href="{% if current_user.is_authenticated %}{{ url_for('donor') }}{% else %}{{ url_for('login') }}{% endif %}" class="donate-btn">Donate</a>
+
         </nav>
     </header>
     
@@ -218,7 +219,7 @@
             <h2>One's fingerprints don't fade from the life we touch.</h2>
             <p>Join us in bringing hope to families in need today.</p>
             <div class="btn-container">
-                <a href="select_role" class="btn">Sign Up</a>
+                <a href="signup" class="btn">Sign Up</a>
                 <a href="login" class="btn">Login</a>
             </div>
         </div>

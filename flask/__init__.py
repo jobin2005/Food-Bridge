@@ -75,7 +75,6 @@ def create_app(test_config=None):
                     session['user_id'] = user_data[0][0]  # Store user ID in session
                     role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(session['user_id'],))
                     user_role = role[0][0]  
-                    print(user_role)
                     return jsonify({"success": True, "role": user_role})  # Search the role from the DB and redirects to the pge accordingly
             return jsonify({"success": False, "error": "Invalid username or password!"}) 
         return render_template("login.html", user=current_user)
@@ -88,6 +87,9 @@ def create_app(test_config=None):
         logout_user()
         return jsonify({"success": True, "message": "Logged out successfully"})
     
+    @app.route('/signup')
+    def select_role():
+        return render_template("signup.html")
     
     @app.route('/ngo_register')
     def ngo_register():
@@ -95,11 +97,10 @@ def create_app(test_config=None):
     
     @app.route('/register', methods=['GET', 'POST'])
     def register():
-        role = request.args.get('role', '')
         if request.method == "POST":
             username = request.form.get('username')
             password = request.form.get('password')
-            role = request.form.get('role', '') 
+            role = request.form.get('role-input') 
             
             if not role:  # If role is still missing, return an error
                 return jsonify({"success": False, "error": "Role is missing!"})
@@ -297,16 +298,13 @@ def create_app(test_config=None):
     @app.route('/volunteer_profile')
     def volunteer_profile():
         return render_template("volunteer_profile.html")
-    
-    @app.route('/select_role')
-    def select_role():
-        return render_template("select_role.html")
-    
+
     @app.route('/update_profile')
     def update_profile():
         return render_template("update_profile.html")
 
     return app
+
 
 
 if __name__ == "__main__":
