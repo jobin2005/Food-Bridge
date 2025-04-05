@@ -96,9 +96,7 @@
 
     <script>
         function navigate(role) {
-            if (role === "ngo") {
-                window.location.href = `/ngo_register?role=${role}`;
-            } else {
+            if (role ){
                 window.location.href = `/register?role=${role}`;
             }
         }
