@@ -100,7 +100,7 @@ def create_app(test_config=None):
             username = request.form.get('username')
             password = request.form.get('password')
             role = request.form.get('role', '') 
-            
+            print(role)
             if not role:  # If role is still missing, return an error
                 return jsonify({"success": False, "error": "Role is missing!"})
 
@@ -125,7 +125,12 @@ def create_app(test_config=None):
                 Dob = request.form.get('dob')
                 Phone = request.form.get('mobile')
                 Email = request.form.get('email')
-                Add_id = query("SELECT ADDRESSID FROM ADDRESS ORDER BY ADDRESSID DESC")[0][0] + 1
+                result = query("SELECT ADDRESSID FROM ADDRESS ORDER BY ADDRESSID DESC")
+                if result:
+                    Add_id = result[0][0] + 1
+                else:
+                    Add_id = 101  # Starting ID when table is empty
+
                 
                 insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
                 
