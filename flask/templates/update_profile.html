@@ -152,12 +152,12 @@
             });
         
             try {
-                let response = await fetch("/update_user", {  // ✅ Correct route name
+                let response = await fetch("/update_user", {  // Correct route name
                     method: "PUT",
                     headers: {
-                        "Content-Type": "application/json",  // ✅ Send as JSON
+                        "Content-Type": "application/json",  // Send as JSON
                     },
-                    body: JSON.stringify(jsonData),  // ✅ Send JSON data
+                    body: JSON.stringify(jsonData),  // Send JSON data
                 });
         
                 let result = await response.json(); // Get the JSON response
@@ -189,7 +189,7 @@
                     return;
                 }
         
-                // ✅ Prefill text inputs
+                // Prefill text inputs
                 document.getElementById("first_name").value = data.fname;
                 document.getElementById("last_name").value = data.lname;
                 document.getElementById("email").value = data.email;
@@ -199,16 +199,16 @@
                 document.getElementById("street").value = data.street;
                 document.getElementById("house").value = data.house;
                 document.getElementById("pincode").value = data.pincode;
-                document.getElementById("username").value = data.username; // ✅ Fix undefined variable issue
+                document.getElementById("username").value = data.username; // Fix undefined variable issue
         
-                // ✅ Prefill Date of Birth
+                // Prefill Date of Birth
                 document.getElementById("dob").value = data.dob;
         
-                // ✅ Prefill gender (radio button)
+                // Prefill gender (radio button)
                 let genderOptions = document.getElementsByName("gender"); // Get all gender radio buttons
                 genderOptions.forEach(radio => {
                     if (radio.value.toLowerCase().trim() === data.gender.toLowerCase().trim()) {
-                        radio.checked = true; // ✅ Select the correct radio button
+                        radio.checked = true; // Select the correct radio button
                         console.log("Checked:", radio.value); // Debugging
                     }
                 });
@@ -218,9 +218,8 @@
             }
         }
         
-        // ✅ Load profile when page loads
+        // Load profile when page loads
         window.onload = loadProfile;
-        
 
     </script>
 </body>

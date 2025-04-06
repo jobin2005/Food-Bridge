@@ -10,7 +10,7 @@
             margin: 0;
             padding: 0;
             background-color: #f9f9f9;
-            background: url('bg3.jpg');
+            background: url('/static/bg3.jpg');
         }
         .container {
             max-width: 600px;
@@ -78,6 +78,7 @@
 <body>
     <div class="container">
         <h1>Registration</h1>
+      
         {% if request.args.get('role', '') == 'donor' or request.args.get('role', '') == 'volunteer' %}
         <form id="register-form">
             <input type="hidden" name="role" id="role-input">
@@ -89,7 +90,7 @@
             <input type="text" id="last_name" name="last_name" placeholder="Last Name">
 
             <label><b>Date of Birth</b></label>
-            <input type="date" name="dob" id="dob">
+            <input type="date" name="dob" id="dob" max="{{ min_date }}">
 
             <label><b>Gender</b></label>
             <div class="radio-group">
@@ -234,6 +235,7 @@
             event.preventDefault(); // Prevent default form submission
 
             let formData = new FormData(this); // Get form data
+
             if (!formData.get("role")) {
                 alert("Role is missing! Please select a role.");
                 return;

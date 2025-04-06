@@ -3,7 +3,8 @@ import os
 from flask import Flask, render_template, request, jsonify, session, url_for
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database import *
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+from dateutil.relativedelta import relativedelta
 
 class User(UserMixin):
     def __init__(self, id, username, role):
@@ -52,28 +53,16 @@ def create_app():
             username = request.form.get('username')
             password = request.form.get('password')
 
-            # First, check if user exists
-            user_data = query(
-                "SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME AND PASSWORD = :PASSWORD",
-                {"USERNAME": username, "PASSWORD": password}
-            )
+            user_data = query("SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME", {"USERNAME": username})
 
-            if user_data:  # ✅ Only proceed if user exists
+            if user_data:  # If user exists
                 stored_password = user_data[0][2]  # Get stored password from DB
-
-                if password == stored_password:  # (This is redundant if the password check is done in query, but okay for now)
-                    user_id = user_data[0][0]
-
-                    # ✅ Now it's safe to fetch role
-                    user_role_result = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1", (user_id,))
-                    user_role = user_role_result[0][0] if user_role_result else "unknown"
-
-                    user = User(user_id, user_data[0][1], user_role)
+                if password == stored_password:  # Check password
+                    user_role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(user_data[0][0],))
+                    user = User(user_data[0][0], user_data[0][1], user_role)
                     login_user(user, remember=True)
-                    session['user_id'] = user_id  # Store user ID in session  
-
-                    return jsonify({"success": True, "role": user_role})
-            
+                    session['user_id'] = user_data[0][0]  # Store user ID in session  
+                    return jsonify({"success": True, "role": user_role})  # Search the role from the DB and redirects to the pge accordingly
             return jsonify({"success": False, "error": "Invalid username or password!"}) 
 
         return render_template("login.html", user=current_user)
@@ -97,12 +86,13 @@ def create_app():
     
     @app.route('/register', methods=['GET', 'POST'])
     def register():
-        role = request.args.get('role', '')
+        today = date.today()
+        min_date = (today - relativedelta(years=18)).isoformat()
         if request.method == "POST":
             username = request.form.get('username')
             password = request.form.get('password')
-            role = request.form.get('role', '') 
-            print(role)
+            
+            role = request.form.get('role-input')
             if not role:  # If role is still missing, return an error
                 return jsonify({"success": False, "error": "Role is missing!"})
 
@@ -147,7 +137,6 @@ def create_app():
                 print(new_id)
                 insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
                     (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
-
             else:
                 return jsonify({"success": False, "error": "Invalid role"})
 
@@ -164,7 +153,7 @@ def create_app():
             return jsonify({"success": True})
           
 
-        return render_template("register.html")
+        return render_template("register.html", min_date=min_date)
 
     
     @app.route('/feedback')
@@ -259,7 +248,9 @@ def create_app():
                 "district": address_data[0][1],
                 "street": address_data[0][2],
                 "house": address_data[0][3],
-                "pincode": address_data[0][4]
+                "pincode": address_data[0][4],
+                "total_dono": dono_count,
+                "last_dono": last_dono
             }
 
             # Add donor-specific fields
@@ -338,7 +329,7 @@ def create_app():
             return jsonify({"success": True, "message": "User updated successfully"})
 
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500  # ✅ Return error details
+            return jsonify({"success": False, "error": str(e)}), 500  # Return error details
 
     
     @app.route('/ngo')
