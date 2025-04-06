@@ -120,23 +120,16 @@ def create_app():
             Phone = request.form.get('mobile')
             Email = request.form.get('email')
 
-                # Generate Address ID
-            result = query("SELECT ADDRESSID FROM ADDRESS ORDER BY ADDRESSID DESC")
-            if result:
-                Add_id = result[0][0] + 1
-            else:
-                Add_id = 101  # Starting ID when table is empty
-
+            # Generate Address ID
+            Add_id = query("SELECT ADDRESSID FROM ADDRESS ORDER BY ADDRESSID DESC")
+            Add_id = Add_id[0][0] + 1 if Add_id else 101
                 
             # Insert user details
             if role == "donor":
-                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)",
-                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))      
+                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))      
             elif role == "volunteer":
                 pincode = request.form.get('pincode')
-                print(new_id)
-                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
-                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
             else:
                 return jsonify({"success": False, "error": "Invalid role"})
 
@@ -147,8 +140,7 @@ def create_app():
             house = request.form.get('house')
             pincode = request.form.get('pincode')
 
-            insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",
-                (Add_id, state, district, street, house, pincode))
+            insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)", (Add_id, state, district, street, house, pincode))
 
             return jsonify({"success": True})
           
@@ -249,8 +241,6 @@ def create_app():
                 "street": address_data[0][2],
                 "house": address_data[0][3],
                 "pincode": address_data[0][4],
-                "total_dono": dono_count,
-                "last_dono": last_dono
             }
 
             # Add donor-specific fields
@@ -267,6 +257,11 @@ def create_app():
         except Exception as e:
             print("Profile fetch error:", e)
             return jsonify({"error": str(e)}), 500
+
+    @app.route('/update_profile')
+    @login_required
+    def update_profile():
+        return render_template("update_profile.html")
 
     @app.route('/update_user', methods=['PUT'])
     def update_user():
@@ -347,10 +342,6 @@ def create_app():
     @app.route('/volunteer_profile')
     def volunteer_profile():
         return render_template("volunteer_profile.html")
-
-    @app.route('/update_profile')
-    def update_profile():
-        return render_template("update_profile.html")
 
     return app
 
