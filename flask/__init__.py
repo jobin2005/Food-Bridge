@@ -3,7 +3,8 @@ import os
 from flask import Flask, render_template, request, jsonify, session, url_for
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database import *
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+from dateutil.relativedelta import relativedelta
 
 class User(UserMixin):
     def __init__(self, id, username, role):
@@ -52,13 +53,12 @@ def create_app():
             username = request.form.get('username')
             password = request.form.get('password')
 
-            user_data = query("SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME AND PASSWORD = :PASSWORD", {"USERNAME": username, "PASSWORD": password})
+            user_data = query("SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME", {"USERNAME": username})
 
-            user_role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(user_data[0][0],))[0][0]
-        
             if user_data:  # If user exists
                 stored_password = user_data[0][2]  # Get stored password from DB
                 if password == stored_password:  # Check password
+                    user_role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(user_data[0][0],))
                     user = User(user_data[0][0], user_data[0][1], user_role)
                     login_user(user, remember=True)
                     session['user_id'] = user_data[0][0]  # Store user ID in session  
@@ -84,6 +84,8 @@ def create_app():
     
     @app.route('/register', methods=['GET', 'POST'])
     def register():
+        today = date.today()
+        min_date = (today - relativedelta(years=18)).isoformat()
         if request.method == "POST":
             username = request.form.get('username')
             password = request.form.get('password')
@@ -128,7 +130,7 @@ def create_app():
                 insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",(Add_id, state, district, street, house, pincode))
             return jsonify({"success": True})  
 
-        return render_template("register.html")
+        return render_template("register.html", min_date=min_date)
 
     
     @app.route('/feedback')
