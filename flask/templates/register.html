@@ -78,8 +78,8 @@
 <body>
     <div class="container">
         <h1>Registration</h1>
+        {% if request.args.get('role', '') == 'donor' or request.args.get('role', '') == 'volunteer' %}
         <form id="register-form">
-            
             <input type="hidden" name="role" id="role-input">
 
             <label><b>First Name</b></label>
@@ -139,6 +139,59 @@
 
             <button type="submit" class="btn">Register</button>
         </form>
+        {% elif request.args.get('role', '') == 'ngo' %}
+        <form id="register-form">
+
+            <input type="hidden" name="role" id="role-input">
+
+            <label><b>NGO Name</b></label>
+            <input type="text" id="ngo_name" name="ngo_name" placeholder="NGO Name" required>
+
+            <label><b>NGO Registation Id</b></label>
+            <input type="email" id="reg_id" name="red_id" placeholder="Registration ID" required>
+
+            <label><b>Email</b></label>
+            <input type="email" id="email" name="email" placeholder="Email" required>
+
+            <label><b>Mobile Number</b></label>
+            <input type="tel" id="mobile" name="mobile" placeholder="Mobile Number" required pattern="\d{10}" title="Mobile number must be 10 digits.">
+
+            <label><b>State</b></label>
+            <input type="text" id="state" name="state" placeholder="State" required>
+
+            <label><b>District</b></label>
+            <input type="text" id="district" name="district" placeholder="District" required>
+
+            <label><b>Street Name</b></label>
+            <input type="text" id="street" name="street" placeholder="Street Name" required>
+
+            <label><b>House No/Locality</b></label>
+            <input type="text" id="house" name="house" placeholder="House No./Locality" required>
+
+            <label><b>Pincode</b></label>
+            <input type="text" id="pincode" name="pincode" placeholder="Pincode" required pattern="\d{6}" title="Pincode must be exactly 6 digits." oninput="validatePincode()">
+            <p id="pincodeError" class="error-message">Pincode must be exactly 6 digits.</p>
+
+            <label><b>Username</b></label>
+            <input type="text" id="username" name="username" placeholder="Username" required>
+
+            <label><b>Password</b></label>
+            <input type="password" id="password" name="password" placeholder="Create Password" required oninput="validatePassword()">
+            <p id="passwordError" class="error-message">Password must be at least 6 characters long and include at least 1 special character.</p>
+
+            <label><b>Confirm Password</b></label>
+            <input type="password" id="confirm_password" name="password" placeholder="Confirm Password" required oninput="validateConfirmPassword()">
+            <p id="passwordMatchError" class="error-message">Passwords do not match.</p>
+
+            <p id="registrationError" class="error-message"></p>
+
+            <div class="checkbox-group">
+                <label><input type="checkbox" required> Accept terms and conditions</label>
+            </div>
+
+            <button type="submit" class="btn">Register</button>
+        </form>
+        {% endif %}
     </div>
 
     <script>
@@ -167,43 +220,42 @@
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-    const role = urlParams.get("role");
+        const role = urlParams.get("role");
 
-    if (role) {
-        document.getElementById("role-input").value = role;
-        console.log("DEBUG: Role set in hidden input ->", role);
-    } else {
-        console.error("DEBUG: Role parameter missing in URL!");
-    }
-
-    // ✅ Ensure role is set in form before submission
-    document.getElementById("register-form").addEventListener("submit", async function(event) {
-        event.preventDefault(); // Prevent default form submission
-
-        let formData = new FormData(this); // Get form data
-        if (!formData.get("role")) {
-            alert("Role is missing! Please select a role.");
-            return;
-        }
-
-        let response = await fetch("/register", {
-            method: "POST",
-            body: formData
-        });
-
-        let result = await response.json(); // Get the JSON response
-
-        if (result.success) {
-            alert("Registration successful! Redirecting to login...");
-            setTimeout(() => {
-                window.location.href = "/login"; // Redirect after success
-            }, 1500);
+        if (role) {
+            document.getElementById("role-input").value = role;
+            console.log("DEBUG: Role set in hidden input ->", role);
         } else {
-            document.getElementById("registrationError").innerText = result.error;
-            document.getElementById("registrationError").style.display = "block";
+            console.error("DEBUG: Role parameter missing in URL!");
         }
-    });
-        
+
+        // Ensure role is set in form before submission
+        document.getElementById("register-form").addEventListener("submit", async function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            let formData = new FormData(this); // Get form data
+            if (!formData.get("role")) {
+                alert("Role is missing! Please select a role.");
+                return;
+            }
+
+            let response = await fetch("/register", {
+                method: "POST",
+                body: formData
+            });
+
+            let result = await response.json(); // Get the JSON response
+
+            if (result.success) {
+                alert("Registration successful! Redirecting to login...");
+                setTimeout(() => {
+                    window.location.href = "/login"; // Redirect after success
+                }, 1500);
+            } else {
+                document.getElementById("registrationError").innerText = result.error;
+                document.getElementById("registrationError").style.display = "block";
+            }
+        });
     </script>
 </body>
 </html>

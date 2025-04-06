@@ -6,40 +6,27 @@ from database import *
 from datetime import datetime, timedelta
 
 class User(UserMixin):
-    def __init__(self, id, username):
+    def __init__(self, id, username, role):
         self.id = id
         self.username = username
+        self.role = role
 
-def create_app(test_config=None):
+def create_app():
     # create and configure the app
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__)
     app.config.from_mapping(
         SECRET_KEY='dev',
-        DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
     )
 
     login_manager = LoginManager()
     login_manager.init_app(app)
     login_manager.login_view = "login"
 
-    if test_config is None:
-        # load the instance config, if it exists, when not testing
-        app.config.from_pyfile('config.py', silent=True)
-    else:
-        # load the test config if passed in
-        app.config.from_mapping(test_config)
-
-    # ensure the instance folder exists
-    try:
-        os.makedirs(app.instance_path)
-    except OSError:
-        pass
-
     @login_manager.user_loader
     def load_user(user_id):
-        user_data = query("SELECT ID, USERNAME FROM LOGIN WHERE ID = :ID", {"ID": user_id})
+        user_data = query("SELECT ALLUSERS.ID, USERNAME, ROLE FROM LOGIN, ALLUSERS WHERE LOGIN.ID = ALLUSERS.ID AND LOGIN.ID = :ID", {"ID": user_id})
         if user_data:
-            return User(user_data[0][0], user_data[0][1])
+            return User(user_data[0][0], user_data[0][1], user_data[0][2])
         return None
 
     # a simple page that says hello
@@ -59,26 +46,38 @@ def create_app(test_config=None):
     def aboutus():
         return render_template("about.html")
     
-    @app.route('/login', methods=['GET', 'POST'])
+    @app.route("/login", methods=["POST", "GET"])
     def login():
         if request.method == "POST":
             username = request.form.get('username')
             password = request.form.get('password')
 
-            user_data = query("SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME AND PASSWORD = :PASSWORD", {"USERNAME": username, "PASSWORD": password})
-        
-            if user_data:  # If user exists
-                user = User(user_data[0][0], user_data[0][1])
-                login_user(user, remember=True)
+            # First, check if user exists
+            user_data = query(
+                "SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME AND PASSWORD = :PASSWORD",
+                {"USERNAME": username, "PASSWORD": password}
+            )
+
+            if user_data:  # ✅ Only proceed if user exists
                 stored_password = user_data[0][2]  # Get stored password from DB
-                if password == stored_password:  # Check password
-                    session['user_id'] = user_data[0][0]  # Store user ID in session
-                    role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(session['user_id'],))
-                    user_role = role[0][0]  
-                    print(user_role)
-                    return jsonify({"success": True, "role": user_role})  # Search the role from the DB and redirects to the pge accordingly
+
+                if password == stored_password:  # (This is redundant if the password check is done in query, but okay for now)
+                    user_id = user_data[0][0]
+
+                    # ✅ Now it's safe to fetch role
+                    user_role_result = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1", (user_id,))
+                    user_role = user_role_result[0][0] if user_role_result else "unknown"
+
+                    user = User(user_id, user_data[0][1], user_role)
+                    login_user(user, remember=True)
+                    session['user_id'] = user_id  # Store user ID in session  
+
+                    return jsonify({"success": True, "role": user_role})
+            
             return jsonify({"success": False, "error": "Invalid username or password!"}) 
+
         return render_template("login.html", user=current_user)
+
     
     @app.route('/logout')
     @login_required
@@ -88,6 +87,9 @@ def create_app(test_config=None):
         logout_user()
         return jsonify({"success": True, "message": "Logged out successfully"})
     
+    @app.route('/signup')
+    def select_role():
+        return render_template("signup.html")
     
     @app.route('/ngo_register')
     def ngo_register():
@@ -100,7 +102,7 @@ def create_app(test_config=None):
             username = request.form.get('username')
             password = request.form.get('password')
             role = request.form.get('role', '') 
-            
+            print(role)
             if not role:  # If role is still missing, return an error
                 return jsonify({"success": False, "error": "Role is missing!"})
 
@@ -114,32 +116,53 @@ def create_app(test_config=None):
 
             #Insert new user with ID(TO Table LOGIN)
             insert("INSERT INTO LOGIN (ID, USERNAME, PASSWORD) VALUES (:1, :2, :3)", (new_id, username, password))
+            
             #Inserting the roles of the users(TO Table ALLUSERS)
             insert("INSERT INTO ALLUSERS (ID, ROLE) VALUES (:1, :2)", (new_id, role))
         
             #Inserting the personal Details of the user to thier respective Tables
-            if role.lower() == "donor":
-                Fname = request.form.get('first_name')
-                Lname = request.form.get('last_name')
-                Gender = request.form.get('gender')
-                Dob = request.form.get('dob')
-                Phone = request.form.get('mobile')
-                Email = request.form.get('email')
-                Add_id = query("SELECT ADDRESSID FROM ADDRESS ORDER BY ADDRESSID DESC")[0][0] + 1
+            role = role.lower()
+
+            Fname = request.form.get('first_name')
+            Lname = request.form.get('last_name')
+            Gender = request.form.get('gender')
+            Dob = request.form.get('dob')
+            Phone = request.form.get('mobile')
+            Email = request.form.get('email')
+
+                # Generate Address ID
+            result = query("SELECT ADDRESSID FROM ADDRESS ORDER BY ADDRESSID DESC")
+            if result:
+                Add_id = result[0][0] + 1
+            else:
+                Add_id = 101  # Starting ID when table is empty
+
                 
-                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
-                
-                
-                #Inserting the address details of the user to their repective Tables
-                state = request.form.get('state')
-                district = request.form.get('district')
-                street = request.form.get('street')
-                house = request.form.get('house')
+            # Insert user details
+            if role == "donor":
+                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)",
+                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))      
+            elif role == "volunteer":
                 pincode = request.form.get('pincode')
-                
-                #Inserting to table(Table is ADDRESS)
-                insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",(Add_id, state, district, street, house, pincode))
-            return jsonify({"success": True})  
+                print(new_id)
+                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
+                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+
+            else:
+                return jsonify({"success": False, "error": "Invalid role"})
+
+            # Insert address
+            state = request.form.get('state')
+            district = request.form.get('district')
+            street = request.form.get('street')
+            house = request.form.get('house')
+            pincode = request.form.get('pincode')
+
+            insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",
+                (Add_id, state, district, street, house, pincode))
+
+            return jsonify({"success": True})
+          
 
         return render_template("register.html")
 
@@ -155,6 +178,8 @@ def create_app(test_config=None):
     @app.route('/donor', methods=['GET', 'POST'])
     @login_required
     def donor():
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        user_fn = query("SELECT FN FROM DONOR WHERE ID = :ID",{"ID":current_user.id})[0][0]
         if request.method == "POST":
             try:
                 item_name = request.form.get('itemName')
@@ -185,36 +210,47 @@ def create_app(test_config=None):
             except Exception as e:
                 return jsonify({"success": False, "error": str(e)})
  
-        return render_template("donor.html")
+        return render_template("donor.html", current_date=current_date, user_fn=user_fn)
     
     @app.route('/donor_profile')
     def donor_profile():
         return render_template("donor_profile.html")
     
     @app.route('/get_profile', methods=['GET'])
+    @login_required
     def get_profile():
         try:
-            user_id = session.get('user_id') 
-            print("Session User ID:", session.get('user_id'))
+            user_id = current_user.id
+            user_role = current_user.role  # Assuming role is stored in current_user
 
             if not user_id:
                 return jsonify({"error": "User not logged in"}), 401
 
-            # Fetch user profile from database
-            profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB, ADDRESSID FROM DONOR WHERE ID = :1", (user_id,))
-            add_id = profile_data[0][6]
-            address_data = query("SELECT STATE, DISTRICT, STREET, HOUSE, PINCODE FROM ADDRESS WHERE ADDRESSID = :1", (add_id,))
-            username= query("SELECT USERNAME FROM LOGIN WHERE ID = :1", (user_id,))
-            if not profile_data and not address_data:
-                return jsonify({"error": "User not found"}), 404
-            
-            
-            dob_str = profile_data[0][5].strftime('%Y-%m-%d')  # Convert SQL date to string
-            # Convert to dictionary
+            if user_role == "donor":
+                profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB, ADDRESSID FROM DONOR WHERE ID = :1", (user_id,))
+            elif user_role == "volunteer":
+                profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB, ADDRESSID FROM VOLUNTEER WHERE ID = :1", (user_id,))
+            else:
+                return jsonify({"error": "Invalid user role"}), 400
+
+            if not profile_data or len(profile_data[0]) < 7:
+                return jsonify({"error": "Profile data incomplete"}), 404
+
+            address_id = profile_data[0][6]
+            address_data = query("SELECT STATE, DISTRICT, STREET, HOUSE, PINCODE FROM ADDRESS WHERE ADDRESSID = :1", (address_id,))
+            if not address_data:
+                return jsonify({"error": "Address not found"}), 404
+
+            username = query("SELECT USERNAME FROM LOGIN WHERE ID = :1", (user_id,))
+            if not username:
+                return jsonify({"error": "Username not found"}), 404
+
+            dob_str = profile_data[0][5].strftime('%Y-%m-%d') if profile_data[0][5] else "2000-01-01"
+
             user_profile = {
                 "username": username[0][0],
                 "fname": profile_data[0][0],
-                "lname":profile_data[0][1],
+                "lname": profile_data[0][1],
                 "email": profile_data[0][2],
                 "phone": profile_data[0][3],
                 "gender": profile_data[0][4],
@@ -225,16 +261,27 @@ def create_app(test_config=None):
                 "house": address_data[0][3],
                 "pincode": address_data[0][4]
             }
-            
+
+            # Add donor-specific fields
+            if user_role == "donor":
+                dono_count = query("SELECT COUNT(*) FROM DONATION WHERE DONORID = :1", (user_id,))
+                last_dono_result = query(
+                    "SELECT TO_CHAR(DONATIONDATE, 'Month DD, YYYY') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION WHERE DONORID = :1)",
+                    (user_id,))
+                user_profile["total_dono"] = dono_count[0][0] if dono_count else 0
+                user_profile["last_dono"] = last_dono_result[0][0] if last_dono_result else "N/A"
+
             return jsonify(user_profile)
+
         except Exception as e:
+            print("Profile fetch error:", e)
             return jsonify({"error": str(e)}), 500
-        
-        
+
     @app.route('/update_user', methods=['PUT'])
     def update_user():
         try:
             user_id = session.get('user_id')
+            user_role = current_user.role
             if not user_id:
                 return jsonify({"success": False, "error": "User not logged in"}), 401
 
@@ -264,17 +311,29 @@ def create_app(test_config=None):
                  return jsonify({"success": False, "error": "Username already exists. Choose another."})
 
             # Extract ADDRESSID properly
-            Add_id = query("SELECT ADDRESSID FROM DONOR WHERE ID = :1", (user_id,))
-            if not Add_id:
+            if user_role == "donor":
+                add_id_result = query("SELECT ADDRESSID FROM DONOR WHERE ID = :1", (user_id,))
+            elif user_role == "volunteer":
+                add_id_result = query("SELECT ADDRESSID FROM VOLUNTEER WHERE ID = :1", (user_id,))
+            else:
+                return jsonify({"success": False, "error": "Invalid user role"}), 400
+
+            if not add_id_result:
                 return jsonify({"success": False, "error": "Address ID not found"}), 404
-            Add_id = Add_id[0][0]  # Extract first value
+
+            add_id = add_id_result[0][0]
 
             # Update all fields
             update("UPDATE LOGIN SET USERNAME = :1 WHERE ID = :2", (new_username, user_id))
-            update("UPDATE DONOR SET FN = :1, LN = :2, GENDER = :3, DOB = TO_DATE(:4, 'YYYY-MM-DD'), PHONE = :5, EMAIL = :6 WHERE ID = :7",
+            if user_role=="donor":
+                update("UPDATE DONOR SET FN = :1, LN = :2, GENDER = :3, DOB = TO_DATE(:4, 'YYYY-MM-DD'), PHONE = :5, EMAIL = :6 WHERE ID = :7",
                 (new_fname, new_lname, new_gender, new_dob, new_phone, new_email, user_id))
+            elif user_role=="volunteer":
+                update("UPDATE VOLUNTEER SET FN = :1, LN = :2, GENDER = :3, DOB = TO_DATE(:4, 'YYYY-MM-DD'), PHONE = :5, EMAIL = :6 WHERE ID = :7",
+                (new_fname, new_lname, new_gender, new_dob, new_phone, new_email, user_id))
+                
             update("UPDATE ADDRESS SET STATE = :1, DISTRICT = :2, STREET = :3, HOUSE = :4, PINCODE = :5 WHERE ADDRESSID = :6",
-                (new_state, new_district, new_street, new_house, new_pincode, Add_id))
+                (new_state, new_district, new_street, new_house, new_pincode, add_id))
 
             return jsonify({"success": True, "message": "User updated successfully"})
 
@@ -297,16 +356,13 @@ def create_app(test_config=None):
     @app.route('/volunteer_profile')
     def volunteer_profile():
         return render_template("volunteer_profile.html")
-    
-    @app.route('/select_role')
-    def select_role():
-        return render_template("select_role.html")
-    
+
     @app.route('/update_profile')
     def update_profile():
         return render_template("update_profile.html")
 
     return app
+
 
 
 if __name__ == "__main__":

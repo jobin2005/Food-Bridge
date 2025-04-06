@@ -9,7 +9,7 @@
             font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 0;
-            background: url('bg1.jpg') no-repeat center center/cover; /* Background image */
+            background: url('/static/bg1.jpg') no-repeat center center/cover; /* Background image */
             color: #333;
             display: flex;
             height: 100vh;
@@ -22,6 +22,7 @@
 
         .sidebar {
             width: 250px;
+            height: flex;
             background: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
             padding: 20px;
             display: flex;
@@ -55,18 +56,72 @@
         /* Content with transparent background for readability */
         .content {
             flex: 1;
+            height: fit-content;
             padding: 30px;
             background: rgba(255, 255, 255, 0.9); /* Semi-transparent white */
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             border-radius: 10px;
             max-width: 600px;
             margin: 40px auto;
+            align-self: center;
         }
 
         .content h1 {
+            margin-top: 0px;
             margin-bottom: 20px;
             text-align: center;
             color: #4CAF50;
+        }
+        
+        .donor-name {
+            font-weight: bold;
+        }
+
+        .profile-content {
+            flex: 1;
+            background: white;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin: 30px auto;
+            align-self: center;
+        }
+
+        .profile-content h4 {
+            margin-bottom: 20px;
+            margin-top: 0px;
+            font-size: 24px;
+            color: #40916c;
+        }
+
+        .profile-content p {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .details-list {
+            margin-top: 20px;
+            list-style: none;
+            padding: 0;
+        }
+
+        .details-list li {
+            font-size: 16px;
+            padding: 12px;
+            background: #f1f1f1;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+
+        .details-list li:hover {
+            background: #e2e6ea;
+        }
+
+        .details-list li strong {
+            color: #343a40;
         }
 
         .welcome-message {
@@ -134,31 +189,33 @@
             <h2>FOOD BRIDGE</h2>
             <div class="menu">
                 <a href="donor">Dashboard</a>
-                <a href="donor_profile">Profile</a>
+                <a href="donor?section=profile">Profile</a>
                 <a href="feedback">Feedback</a>
                 <a href="support">Support</a>
-                <a href="/">Log Out</a>
+                <a href="logout">Log Out</a>
             </div>
         </aside>
+        {% if request.args.get('section','') == '' %}
         <main class="content">
             <h1>Make a Donation</h1>
-            <p class="welcome-message">Hello, <span id="donorName">Donor</span>! Thank you for your generosity.</p>
+            <p class="welcome-message">Hello, <span class="donor-name">{{ user_fn }}</span>! Thank you for your generosity.</p>
             <form id="donation-form" method="POST">
                 <div class="form-group">
                     <label for="itemName">Item Name:</label>
-                    <input type="text" id="itemName" name="itemName" required>
+                    <input type="text" id="itemName" name="itemName" placeholder="Enter Item Name" required>
                 </div>
                 <div class="form-group">
-                    <label for="shelfLife">Shelf Life (Days):</label>
-                    <input type="number" id="shelfLife" name="shelfLife" required>
+                    <label for="shelfLife">Shelf-Life (Days):</label>
+                    <input type="number" id="shelfLife" name="shelfLife" placeholder="Enter Shelf-Life in Days" required>
                 </div>
                 <div class="form-group">
                     <label for="quantity">Quantity:</label>
-                    <input type="number" id="quantity" name="quantity" required>
+                    <input type="number" id="quantity" name="quantity" placeholder="Enter Number of Individual Items" required>
                 </div>
                 <div class="form-group">
                     <label for="itemCategory">Item Category:</label>
                     <select id="itemCategory" name="itemCategory">
+                        <option value="" selected disabled hidden>Choose here</option>
                         <option value="groceries">Groceries</option>
                         <option value="cookedFood">Cooked Food</option>
                         <option value="other">Other</option>
@@ -166,38 +223,112 @@
                 </div>
                 <div class="form-group">
                     <label for="donationDate">Donation Date:</label>
-                    <input type="date" id="donationDate" name="donationDate" required>
+                    <input type="date" id="donationDate" name="donationDate" value="{{ current_date }}" min="{{ current_date }}" required>
                 </div>
                 <button type="submit">Donate</button>
             </form>
         </main>
+        {% elif request.args.get('section','') == 'profile' %}
+        <main class="profile-content">
+            <h4>Donor Details</h4>
+            <p>View your donation history and profile details below.</p>
+    
+      
+                <div class="details-list" id="profile-info">
+                    <li><strong>Username:</strong> <span id="username"></span></li>
+                    <li><strong>Name:</strong> <span id="name"></span></li>
+                    <li><strong>Email:</strong> <span id="email"></span></li>
+                    <li><strong>Phone:</strong> <span id="phone"></span></li>
+                    <li><strong>Gender:</strong> <span id="gender"></span></li>
+                    <li><strong>Age:</strong> <span id="age"></span></li>
+                    <li><strong>Address:</strong> <span id="address"></span></li>
+                    <li><strong>Total Donations Made:</strong> <span id="total_dono"></span></li>
+                    <li><strong>Last Donation Date:</strong> <span id="last_dono"></span></li>
+                </div>
+                
+          
+                <button class="update-btn" onclick="window.location.href='/update_profile'">Update Profile</button>
+    
+            </main>
+        {% endif %}
     </div>
 
     <script>
-        document.getElementById("donation-form").addEventListener("submit", async function (event) {
-            event.preventDefault();  // Prevent form from submitting normally
-        
-            let formData = new FormData(this);  // Get form data
-        
-            let response = await fetch("/donor", {
-                method: "POST",
-                body: formData
-            });
-        
-            let result = await response.json();  // Get JSON response
-        
-            let messageElement = document.createElement("p");  // Create new message element
-            messageElement.style.fontWeight = "bold";
-        
-            if (result.success) {
-                messageElement.style.color = "green";
-                messageElement.innerText = "✅ " + result.message;
-            } else {
-                messageElement.style.color = "red";
-                messageElement.innerText = "❌ Error: " + result.error;
+        document.addEventListener("DOMContentLoaded", () => {
+            // Handle donation form only if it exists
+            const donationForm = document.getElementById("donation-form");
+            if (donationForm) {
+                donationForm.addEventListener("submit", async function (event) {
+                    event.preventDefault(); // Prevent form from submitting normally
+    
+                    let formData = new FormData(this); // Get form data
+    
+                    let response = await fetch("/donor", {
+                        method: "POST",
+                        body: formData
+                    });
+    
+                    let result = await response.json(); // Get JSON response
+    
+                    let messageElement = document.createElement("p"); // Create new message element
+                    messageElement.style.fontWeight = "bold";
+                    messageElement.style.marginBottom = "0px";
+    
+                    if (result.success) {
+                        messageElement.style.color = "green";
+                        messageElement.innerText = "✅ " + result.message;
+                    } else {
+                        messageElement.style.color = "red";
+                        messageElement.innerText = "❌ Error: " + result.error;
+                    }
+    
+                    this.appendChild(messageElement); // Append message below the form
+                });
             }
-        
-            this.appendChild(messageElement);  // Append message below the form
+    
+            async function loadProfile() {
+                console.log("loadProfile() function is running..."); // Debug log
+                try {
+                    let response = await fetch("/get_profile"); // Call Flask API
+                    let data = await response.json(); // Convert response to JSON
+                    
+                    if (data.error) {
+                        document.getElementById("profile-info").innerHTML = `<p>${data.error}</p>`;
+                        return;
+                    }
+    
+                    let dobDate = new Date(data.dob); // Convert string to Date object
+                    let today = new Date(); // Get current date
+    
+                    let age = today.getFullYear() - dobDate.getFullYear();
+                    let monthDiff = today.getMonth() - dobDate.getMonth();
+                    let dayDiff = today.getDate() - dobDate.getDate();
+    
+                    // If birthday hasn't occurred this year, subtract 1 from age
+                    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                        age--;
+                    }
+    
+                    // Display user data
+                    document.getElementById("username").innerText = data.username;
+                    document.getElementById("name").innerText = data.fname + " " + data.lname;
+                    document.getElementById("email").innerText = data.email;
+                    document.getElementById("phone").innerText = data.phone;
+                    document.getElementById("gender").innerText = data.gender;
+                    document.getElementById("age").innerText = age;
+                    document.getElementById("address").innerText = data.house + ", " + data.street + ", " + data.district + ", " + data.state + ", " + data.pincode;
+                    document.getElementById("total_dono").innerText = data.total_dono;
+                    document.getElementById("last_dono").innerText = data.last_dono;
+                } catch (error) {
+                    console.error("Error fetching profile:", error);
+                }
+            }
+    
+            // Load profile section if present
+            const profileSection = document.getElementById("profile-info");
+            if (profileSection) {
+                loadProfile();
+            }
         });
     </script>
 </body>
