@@ -122,7 +122,9 @@
         <div class="right-section">
             <h1>Sign in</h1>
             <form id="login-form" method="POST">
+                <label for="username">Username</label>
                 <input type="text" id="username" placeholder="Username" class="input-field" name="username" required>
+                <label for="password">Password</label>
                 <input type="password" id="password" placeholder="Password" class="input-field" name="password" required>
                 <a href="#" class="forgot-password">Forgot password?</a>
                 <button type="submit" class="signin-btn">Sign in</button>
@@ -135,9 +137,15 @@
     <script>
         document.getElementById("login-form").addEventListener("submit", async function (event) {
             event.preventDefault();  // Prevent form from submitting normally
+
+            const button = document.querySelector(".signin-btn");
+            const outputMessage = document.getElementById("output-message");
+
+            // Disable button and show loading text
+            button.disabled = true;
+            button.innerText = "Signing in...";
     
             let formData = new FormData(this);  // Get form data
-            let outputMessage = document.getElementById("output-message");
     
             let response = await fetch("/login", {
                 method: "POST",

@@ -223,7 +223,7 @@
                 </div>
                 <div class="form-group">
                     <label for="donationDate">Donation Date:</label>
-                    <input type="date" id="donationDate" name="donationDate" value="{{ current_date }}" required>
+                    <input type="date" id="donationDate" name="donationDate" value="{{ current_date }}" min="{{ current_date }}" required>
                 </div>
                 <button type="submit">Donate</button>
             </form>
@@ -242,7 +242,7 @@
                     <li><strong>Gender:</strong> <span id="gender"></span></li>
                     <li><strong>Age:</strong> <span id="age"></span></li>
                     <li><strong>Address:</strong> <span id="address"></span></li>
-                    <li><strong>Total Donations Made:</strong> <span id="total_dono"></li>
+                    <li><strong>Total Donations Made:</strong> <span id="total_dono"></span></li>
                     <li><strong>Last Donation Date:</strong> <span id="last_dono"></span></li>
                 </div>
                 

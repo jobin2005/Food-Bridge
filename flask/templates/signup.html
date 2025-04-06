@@ -96,7 +96,9 @@
 
     <script>
         function navigate(role) {
-            window.location.href = `/register?role=${role}`;
+            if (role){
+                window.location.href = `/register?role=${role}`;
+            }
         }
     </script>
 
