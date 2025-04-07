@@ -132,15 +132,21 @@ def create_app():
             Email = request.form.get('email')
 
             # Generate Address ID
-            Add_id = query("SELECT ADDRESSID FROM ADDRESS ORDER BY ADDRESSID DESC")
-            Add_id = Add_id[0][0] + 1 if Add_id else 101
-                
+            Add_id = query("SELECT NVL(MAX(ADDRESSID), 100) FROM ADDRESS")[0][0] + 1
+            
+            ngo_name = request.form.get('ngo_name')
+            reg_id = request.form.get('reg_id')
+            owner_name = request.form.get('owner')   
+            
             # Insert user details
             if role == "donor":
                 insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))      
             elif role == "volunteer":
                 pincode = request.form.get('pincode')
                 insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+            elif role == "ngo":
+                insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE, REGISTRATION_ID) VALUES (:1, :2, :3, :4, :5, :6, :7)",
+                (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id))
             else:
                 return jsonify({"success": False, "error": "Invalid role"})
 
@@ -151,8 +157,13 @@ def create_app():
             house = request.form.get('house')
             pincode = request.form.get('pincode')
 
-            insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)", (Add_id, state, district, street, house, pincode))
-
+            if role == 'ngo':
+                insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET,PINCODE) VALUES (:1, :2, :3, :4, :5)",
+                (Add_id, state, district, street,pincode))               
+            else:
+                insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",
+                (Add_id, state, district, street, house, pincode))
+                
             return jsonify({"success": True})
           
 
