@@ -351,7 +351,12 @@ def create_app():
     
     @app.route('/volunteer')
     def volunteer():
-        return render_template("volunteer.html")
+        # Example dummy data - replace with database query later
+        assignments = [
+            {"donation_id": "abc@12_1", "location": "AbcXX", "status": "Pending"},
+            {"donation_id": "yhg2@1", "location": "AfgHx", "status": "Active"},
+        ]
+        return render_template('volunteer.html', assignments=assignments)
     
     @app.route('/volunteer_profile')
     def volunteer_profile():

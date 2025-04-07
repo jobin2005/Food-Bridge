@@ -56,8 +56,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #e0e5d3; /* Adjusted to match previous background color */
-            padding: 15px;
+            background: #e0e5d3;
+            padding: 15px 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
@@ -67,7 +67,7 @@
             margin-top: 20px;
         }
         .box {
-            background: #74c69d; /* Adjusted for a consistent theme */
+            background: #74c69d;
             padding: 20px;
             border-radius: 8px;
             text-align: center;
@@ -95,11 +95,11 @@
             border-bottom: 1px solid #ddd;
         }
         th {
-            background: #40916c; /* Consistent with the sidebar */
+            background: #40916c;
             color: white;
         }
         button {
-            background: #40916c; /* Adjusted button color to match theme */
+            background: #40916c;
             color: white;
             border: none;
             padding: 10px 15px;
@@ -108,7 +108,40 @@
             transition: 0.3s;
         }
         button:hover {
-            background: #2d6a4f; /* Darker shade for hover effect */
+            background: #2d6a4f;
+        }
+
+        .availability-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #ffffff;
+            padding: 8px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        .availability-section label {
+            font-weight: bold;
+            font-size: 16px;
+            color: #2d6a4f;
+        }
+
+        .availability-section select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+            background: #f0f9f1;
+            color: #2d6a4f;
+            outline: none;
+            transition: 0.3s ease;
+        }
+
+        .availability-section select:hover,
+        .availability-section select:focus {
+            border-color: #40916c;
+            box-shadow: 0 0 5px rgba(36, 155, 106, 0.4);
         }
     </style>
 </head>
@@ -125,14 +158,25 @@
     </div>
     <div class="main-content">
         <header>
-            <h3>Welcome, Volunteer!</h3>
-            <p>One fingerprint doesn’t fade from the life we touch...</p>
+            <div>
+                <h3>Welcome, Volunteer!</h3>
+                <p>One fingerprint doesn’t fade from the life we touch...</p>
+            </div>
+            <div class="availability-section">
+                <label for="availability">Availability:</label>
+                <select id="availability" onchange="updateAvailability()">
+                    <option value="Available">Available</option>
+                    <option value="Not Available">Not Available</option>
+                </select>
+            </div>
         </header>
+
         <div class="stats">
             <div class="box">Active Pickups <br><span>2</span></div>
             <div class="box">Cleared Pickups <br><span>2</span></div>
             <div class="box">Pending Pickups <br><span>0</span></div>
         </div>
+
         <section class="assignments">
             <h4>Your Assignments</h4>
             <table>
@@ -145,21 +189,61 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>abc@12_1</td>
-                        <td>AbcXX</td>
-                        <td>Pending</td>
-                        <td><button>Start Pickup</button></td>
-                    </tr>
-                    <tr>
-                        <td>yhg2@1</td>
-                        <td>AfgHx</td>
-                        <td>Active</td>
-                        <td><button>Start Pickup</button></td>
-                    </tr>
+                    {% for assignment in assignments %}
+                        <tr>
+                            <td>{{ assignment.donation_id }}</td>
+                            <td>{{ assignment.location }}</td>
+                            <td>{{ assignment.status }}</td>
+                            <td>
+                                {% if assignment.status == "Pending" or assignment.status == "Active" %}
+                                    <button onclick="handlePickup('{{ assignment.donation_id }}')">
+                                        {% if assignment.status == "Pending" %}Start Pickup{% else %}Continue Pickup{% endif %}
+                                    </button>
+                                {% elif assignment.status == "Delivered" %}
+                                    Delivered
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </section>
     </div>
+
+    <script>
+        async function updateAvailability() {
+            const status = document.getElementById("availability").value;
+            try {
+                await fetch("/update_availability", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ availability: status })
+                });
+            } catch (err) {
+                console.error("Failed to update availability", err);
+            }
+        }
+
+        async function handlePickup(donationId) {
+            try {
+                const res = await fetch(`/start_pickup/${donationId}`, {
+                    method: "POST"
+                });
+                if (res.ok) {
+                    location.reload();
+                }
+            } catch (err) {
+                console.error("Error starting pickup", err);
+            }
+        }
+
+        window.onload = async () => {
+            const res = await fetch("/get_availability");
+            const data = await res.json();
+            if (data.availability) {
+                document.getElementById("availability").value = data.availability;
+            }
+        };
+    </script>
 </body>
 </html>
