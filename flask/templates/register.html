@@ -220,43 +220,48 @@
             pincodeError.style.display = pincodePattern.test(pincode) ? "none" : "block";
         }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const role = urlParams.get("role");
-
-        if (role) {
-            document.getElementById("role-input").value = role;
-            console.log("DEBUG: Role set in hidden input ->", role);
-        } else {
-            console.error("DEBUG: Role parameter missing in URL!");
-        }
-
-        // Ensure role is set in form before submission
-        document.getElementById("register-form").addEventListener("submit", async function(event) {
-            event.preventDefault(); // Prevent default form submission
-
-            let formData = new FormData(this); // Get form data
-
-            if (!formData.get("role")) {
-                alert("Role is missing! Please select a role.");
-                return;
-            }
-
-            let response = await fetch("/register", {
-                method: "POST",
-                body: formData
-            });
-
-            let result = await response.json(); // Get the JSON response
-
-            if (result.success) {
-                alert("Registration successful! Redirecting to login...");
-                setTimeout(() => {
-                    window.location.href = "/login"; // Redirect after success
-                }, 1500);
+        document.addEventListener("DOMContentLoaded", function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const role = urlParams.get("role");
+    
+            if (role) {
+                const roleInput = document.getElementById("role-input");
+                if (roleInput) {
+                    roleInput.value = role;
+                    console.log("DEBUG: Role set in hidden input ->", role);
+                }
             } else {
-                document.getElementById("registrationError").innerText = result.error;
-                document.getElementById("registrationError").style.display = "block";
+                console.error("DEBUG: Role parameter missing in URL!");
             }
+    
+            // Ensure role is set in form before submission
+            document.getElementById("register-form").addEventListener("submit", async function(event) {
+                event.preventDefault(); // Prevent default form submission
+    
+                let formData = new FormData(this); // Get form data
+    
+                if (!formData.get("role")) {
+                    alert("Role is missing! Please select a role.");
+                    return;
+                }
+    
+                let response = await fetch("/register", {
+                    method: "POST",
+                    body: formData
+                });
+    
+                let result = await response.json(); // Get the JSON response
+    
+                if (result.success) {
+                    alert("Registration successful! Redirecting to login...");
+                    setTimeout(() => {
+                        window.location.href = "/login"; // Redirect after success
+                    }, 1500);
+                } else {
+                    document.getElementById("registrationError").innerText = result.error;
+                    document.getElementById("registrationError").style.display = "block";
+                }
+            });
         });
     </script>
 </body>

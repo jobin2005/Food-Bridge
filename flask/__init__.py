@@ -92,7 +92,7 @@ def create_app():
             username = request.form.get('username')
             password = request.form.get('password')
             
-            role = request.form.get('role-input')
+            role = request.form.get('role')
             if not role:  # If role is still missing, return an error
                 return jsonify({"success": False, "error": "Role is missing!"})
 
