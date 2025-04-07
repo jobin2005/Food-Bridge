@@ -16,6 +16,8 @@
             background-color: #f9f9f9;
             color: #333;
             background: url('bg3.jpg');
+            height: 100vh;
+            flex-direction: column;
         }
 
         header {
@@ -23,7 +25,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 3rem;
+            padding: 20px 30px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
@@ -49,13 +51,20 @@
             color: #ff4d4d;
         }
 
-        .contact-container {
+        .container {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 80vh;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .contact {
+            flex: 1;
             padding: 2rem;
             background-color: #e9f5e9;
+
+            display: flex;              /* Add this */
+            justify-content: center;    /* Center horizontally */
+            align-items: center;        /* Center vertically */
         }
 
         .contact-box {
@@ -66,6 +75,7 @@
             max-width: 500px;
             width: 100%;
             text-align: center;
+            align-self: center;
         }
 
         .contact-box h2 {
@@ -140,38 +150,38 @@
     </style>
 </head>
 <body>
+    <div class="container">
+        <header>
+            <img src="{{url_for('static', filename='logo1.png')}}" alt="Food Bridge Logo" height="30">
+            <nav>
+                <a href="/">Home</a>
+                <a href="about">About Us</a>
+                <a href="contact">Contact Us</a>
+            </nav>
+        </header>
 
-    <header>
-        <h1>FOOD BRIDGE</h1>
-        <nav>
-            <a href="/">Home</a>
-            <a href="about">About Us</a>
-            <a href="contact">Contact Us</a>
-        </nav>
-    </header>
-
-    <div class="contact-container">
-        <div class="contact-box">
-            <h2>Contact Us</h2>
-            <p>Have questions or want to get involved? Drop us a message below!</p>
-            <form>
-                <input type="text" placeholder="Your Name" required>
-                <input type="email" placeholder="Your Email" required>
-                <textarea rows="5" placeholder="Your Message" required></textarea>
-                <button type="submit">Send Message</button>
-            </form>
-            <div class="contact-info">
-                <p>Email: support@foodbridge.com</p>
-                <p>Phone: +1 234 567 890</p>
-                <p>Address: 123 Food Street, City, Country</p>
+        <div class="contact">
+            <div class="contact-box">
+                <h2>Contact Us</h2>
+                <p>Have questions or want to get involved? Drop us a message below!</p>
+                <form>
+                    <input type="text" placeholder="Your Name" required>
+                    <input type="email" placeholder="Your Email" required>
+                    <textarea rows="5" placeholder="Your Message" required></textarea>
+                    <button type="submit">Send Message</button>
+                </form>
+                <div class="contact-info">
+                    <p>Email: support@foodbridge.com</p>
+                    <p>Phone: +1 234 567 890</p>
+                    <p>Address: 123 Food Street, City, Country</p>
+                </div>
             </div>
         </div>
+
+        <footer>
+            <a href="about">About Us</a>
+            <a href="contact">Contact Us</a>
+        </footer>
     </div>
-
-    <footer>
-        <a href="about">About Us</a>
-        <a href="contact">Contact Us</a>
-    </footer>
-
 </body>
 </html>

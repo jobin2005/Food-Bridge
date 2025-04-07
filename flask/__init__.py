@@ -1,16 +1,27 @@
 import os
 
-from flask import Flask, render_template, request, jsonify, session, url_for
+from flask import Flask, render_template, request, jsonify, session, url_for, abort, redirect
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database import *
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
+from functools import wraps
 
 class User(UserMixin):
     def __init__(self, id, username, role):
         self.id = id
         self.username = username
         self.role = role
+
+def role_required(role):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if current_user.role.lower() != role.lower():
+                return abort(403, description="Access denied. You're not authorized to view this page.")  # Or redirect to a "not authorized" page
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 def create_app():
     # create and configure the app
@@ -74,7 +85,7 @@ def create_app():
         session.clear()  # Clears session data
         print(current_user.id)
         logout_user()
-        return jsonify({"success": True, "message": "Logged out successfully"})
+        return redirect(url_for('mainpage'))
     
     @app.route('/signup')
     def select_role():
@@ -92,7 +103,7 @@ def create_app():
             username = request.form.get('username')
             password = request.form.get('password')
             
-            role = request.form.get('role-input')
+            role = request.form.get('role')
             if not role:  # If role is still missing, return an error
                 return jsonify({"success": False, "error": "Role is missing!"})
 
@@ -158,6 +169,7 @@ def create_app():
     
     @app.route('/donor', methods=['GET', 'POST'])
     @login_required
+    @role_required('donor')
     def donor():
         current_date = datetime.now().strftime("%Y-%m-%d")
         user_fn = query("SELECT FN FROM DONOR WHERE ID = :ID",{"ID":current_user.id})[0][0]
@@ -184,7 +196,7 @@ def create_app():
                 # Insert into FOOD table (Using parameterized query)
                 insert("INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE) VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'))", (food_id, item_name, item_category, quantity, 'ONHOLD', shelf_life))
 
-                insert("INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE) VALUES (:1, :2, :3, 'UNASSIGNED', TO_DATE(:4, 'YYYY-MM-DD'))", (dono_id, food_id, current_user.id, donation_date_obj))
+                insert("INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE) VALUES (:1, :2, :3, 'PENDING', TO_DATE(:4, 'YYYY-MM-DD'))", (dono_id, food_id, current_user.id, donation_date_obj))
 
                 return jsonify({"success": True, "message": "Donation successful!"})
 
@@ -246,11 +258,14 @@ def create_app():
             # Add donor-specific fields
             if user_role == "donor":
                 dono_count = query("SELECT COUNT(*) FROM DONATION WHERE DONORID = :1", (user_id,))
-                last_dono_result = query(
-                    "SELECT TO_CHAR(DONATIONDATE, 'Month DD, YYYY') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION WHERE DONORID = :1)",
-                    (user_id,))
+                last_dono_result = query("SELECT TO_CHAR(DONATIONDATE, 'Month DD, YYYY') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION WHERE DONORID = :1)", (user_id,))
                 user_profile["total_dono"] = dono_count[0][0] if dono_count else 0
                 user_profile["last_dono"] = last_dono_result[0][0] if last_dono_result else "N/A"
+            elif user_role == "volunteer":
+                delv_count = query("SELECT COUNT(*) FROM DONATION_ASSIGNMENT WHERE VOLUNTEER_ID = :1", (user_id,))
+                last_delv_result = query("SELECT TO_CHAR(DONATIONDATE, 'Month DD, YYYY') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION_ASSIGNMENT WHERE VOLUNTEER_ID = :1)", (user_id,))
+                user_profile["total_delv"] = delv_count[0][0] if delv_count else 0
+                user_profile["last_delv"] = last_delv_result[0][0] if last_delv_result else "N/A"
 
             return jsonify(user_profile)
 
@@ -328,6 +343,8 @@ def create_app():
 
     
     @app.route('/ngo')
+    @login_required
+    @role_required('ngo')
     def ngo():
         return render_template("ngo.html")
     
@@ -336,8 +353,11 @@ def create_app():
         return render_template("ngo_profile.html")
     
     @app.route('/volunteer')
+    @login_required
+    @role_required('volunteer')
     def volunteer():
-        return render_template("volunteer.html")
+        user_fn = query("SELECT FN FROM VOLUNTEER WHERE ID = :ID",{"ID":current_user.id})[0][0]
+        return render_template("volunteer.html", user_fn=user_fn)
     
     @app.route('/volunteer_profile')
     def volunteer_profile():

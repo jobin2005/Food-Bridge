@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Food Bridge - Make a Donation</title>
+    <title>Donor Dashboard</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='styles.css')}}">
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -66,7 +67,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             border-radius: 10px;
             max-width: 600px;
-            margin: 40px auto;
+            margin: auto auto;
             align-self: center;
         }
 
@@ -88,7 +89,7 @@
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin: 50px auto;
+            margin: auto auto;
             align-self: center;
         }
 
@@ -175,7 +176,7 @@
             flex: 1;
             height: fit-content;
             max-width: 600px;
-            margin: 75px auto;
+            margin: 50px auto;
             background: #fff;
             padding: 20px;
             border-radius: 8px;
@@ -254,7 +255,7 @@
 </head>
 <body>
     <aside class="sidebar">
-        <h2>FOOD BRIDGE</h2>
+        <img src="{{url_for('static', filename='logo.png')}}" alt="Food Bridge Logo" class="logo">
         <div class="menu">
             <a href="donor">Dashboard</a>
             <a href="donor?section=profile">Profile</a>
@@ -264,7 +265,6 @@
         </div>
     </aside>
     <div class="container">
-        
         {% if request.args.get('section','') == '' %}
         <main class="content">
             <h1>Make a Donation</h1>
@@ -295,7 +295,7 @@
                     <label for="donationDate">Donation Date:</label>
                     <input type="date" id="donationDate" name="donationDate" value="{{ current_date }}" min="{{ current_date }}" required>
                 </div>
-                <button type="submit">Donate</button>
+                <button type="submit" id="donation-btn">Donate</button>
             </form>
         </main>
         {% elif request.args.get('section','') == 'profile' %}
@@ -313,7 +313,6 @@
                 <li><strong>Total Donations Made:</strong> <span id="total_dono"></span></li>
                 <li><strong>Last Donation Date:</strong> <span id="last_dono"></span></li>
             </ul>
-            
             <button class="update-btn" onclick="window.location.href='/donor?section=update'">Update Profile</button>
         </main>
         {% elif request.args.get('section','') == 'update' %}
@@ -370,11 +369,13 @@
                 <button type="submit" class="btn">Update</button>
             </form>
         </main>
-            
         {% endif %}
     </div>
 
     <script>
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
 
         function validatePincode() {
             var pincode = document.getElementById("pincode").value;
@@ -391,6 +392,10 @@
                 donationForm.addEventListener("submit", async function (event) {
                     event.preventDefault(); // Prevent form from submitting normally
     
+                    donateBtn = document.getElementById("donation-btn")
+                    donateBtn.disabled = true;
+                    donateBtn.innerText = "Processing...";
+
                     let formData = new FormData(this); // Get form data
     
                     let response = await fetch("/donor", {
@@ -407,7 +412,12 @@
                     if (result.success) {
                         messageElement.style.color = "green";
                         messageElement.innerText = "✅ " + result.message;
+                        donateBtn.innerText = "Donate"
+                        await sleep(3000);
+                        window.location.href = '/donor';
                     } else {
+                        donateBtn.disabled = false;
+                        donateBtn.innerText = "Donate"
                         messageElement.style.color = "red";
                         messageElement.innerText = "❌ Error: " + result.error;
                     }
@@ -415,51 +425,51 @@
                     this.appendChild(messageElement); // Append message below the form
                 });
             }
-    
-            async function loadProfile() {
-                console.log("loadProfile() function is running..."); // Debug log
-                try {
-                    let response = await fetch("/get_profile"); // Call Flask API
-                    let data = await response.json(); // Convert response to JSON
-                    
-                    if (data.error) {
-                        document.getElementById("profile-info").innerHTML = `<p>${data.error}</p>`;
-                        return;
-                    }
-    
-                    let dobDate = new Date(data.dob); // Convert string to Date object
-                    let today = new Date(); // Get current date
-    
-                    let age = today.getFullYear() - dobDate.getFullYear();
-                    let monthDiff = today.getMonth() - dobDate.getMonth();
-                    let dayDiff = today.getDate() - dobDate.getDate();
-    
-                    // If birthday hasn't occurred this year, subtract 1 from age
-                    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-                        age--;
-                    }
-    
-                    // Display user data
-                    document.getElementById("username").innerText = data.username;
-                    document.getElementById("name").innerText = data.fname + " " + data.lname;
-                    document.getElementById("email").innerText = data.email;
-                    document.getElementById("phone").innerText = data.phone;
-                    document.getElementById("gender").innerText = data.gender;
-                    document.getElementById("age").innerText = age;
-                    document.getElementById("address").innerText = data.house + ", " + data.street + ", " + data.district + ", " + data.state + ", " + data.pincode;
-                    document.getElementById("total_dono").innerText = data.total_dono;
-                    document.getElementById("last_dono").innerText = data.last_dono;
-                } catch (error) {
-                    console.error("Error fetching profile:", error);
-                }
-            }
-    
-            // Load profile section if present
-            const profileSection = document.getElementById("profile-info");
-            if (profileSection) {
-                loadProfile();
-            }
         });
+    
+        async function loadProfile() {
+            console.log("loadProfile() function is running..."); // Debug log
+            try {
+                let response = await fetch("/get_profile"); // Call Flask API
+                let data = await response.json(); // Convert response to JSON
+                
+                if (data.error) {
+                    document.getElementById("profile-info").innerHTML = `<p>${data.error}</p>`;
+                    return;
+                }
+
+                let dobDate = new Date(data.dob); // Convert string to Date object
+                let today = new Date(); // Get current date
+
+                let age = today.getFullYear() - dobDate.getFullYear();
+                let monthDiff = today.getMonth() - dobDate.getMonth();
+                let dayDiff = today.getDate() - dobDate.getDate();
+
+                // If birthday hasn't occurred this year, subtract 1 from age
+                if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                    age--;
+                }
+
+                // Display user data
+                document.getElementById("username").innerText = data.username;
+                document.getElementById("name").innerText = data.fname + " " + data.lname;
+                document.getElementById("email").innerText = data.email;
+                document.getElementById("phone").innerText = data.phone;
+                document.getElementById("gender").innerText = data.gender;
+                document.getElementById("age").innerText = age;
+                document.getElementById("address").innerText = data.house + ", " + data.street + ", " + data.district + ", " + data.state + ", " + data.pincode;
+                document.getElementById("total_dono").innerText = data.total_dono;
+                document.getElementById("last_dono").innerText = data.last_dono;
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+            }
+        }
+
+        // Load profile section if present
+        const profileSection = document.getElementById("profile-info");
+        if (profileSection) {
+            loadProfile();
+        }
 
         document.addEventListener("DOMContentLoaded", () => {
             const updateForm = document.getElementById("update-form");
@@ -524,8 +534,6 @@
                     document.getElementById("house").value = data.house;
                     document.getElementById("pincode").value = data.pincode;
                     document.getElementById("username").value = data.username;
-
-                    // Prefill Date of Birth
                     document.getElementById("dob").value = data.dob;
 
                     // Prefill gender (radio button)
