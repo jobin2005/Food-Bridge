@@ -83,6 +83,12 @@
             max-width: 600px;
             margin-top: 20px;
         }
+        select, button {
+            padding: 8px;
+            margin-top: 10px;
+            width: 100%;
+            font-size: 14px;
+        }
         @media (max-width: 768px) {
             .sidebar {
                 width: 200px;
@@ -104,16 +110,38 @@
             <a href="/">Log Out</a>
         </div>
     </div>
+
     <div class="dashboard">
         <h1>Welcome, Sir!</h1>
+
+        <!-- ✅ Donor Selection Form -->
+        <div class="card" style="margin-top: 20px;">
+            <h2>Select Donor</h2>
+            <form method="post">
+                <label for="donor">Choose a donor:</label>
+                <select name="donor" id="donor">
+                    {% for pincode, donors in donors.items() %}
+                        <optgroup label="Pincode: {{ pincode }}">
+                            {% for donor in donors %}
+                                <option value="{{ donor.id }}">{{ donor.name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endfor %}
+                </select>
+                <button type="submit">Assign</button>
+            </form>
+        </div>
+
+        <!-- Stats Card -->
         <div class="stats">
             <div class="card">
                 <h3>Total Donations</h3>
-                
                 <p><strong>1532</strong></p>
                 <canvas id="donationsChart"></canvas>
             </div>
         </div>
+
+        <!-- Donations Section -->
         <div class="donations">
             <div class="card">
                 <h3>Unclaimed Donations</h3>
@@ -137,11 +165,13 @@
                 </table>
             </div>
         </div>
+
         <div class="card chart-container">
             <h3>Donations Overview</h3>
-            
+            <!-- Chart placeholder -->
         </div>
     </div>
+
     <script>
         const ctx = document.getElementById('donationsChart').getContext('2d');
         const donationsChart = new Chart(ctx, {

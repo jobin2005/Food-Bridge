@@ -1,9 +1,11 @@
-import os
 
+import os
 from flask import Flask, render_template, request, jsonify, session, url_for
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database import *
 from datetime import datetime, timedelta
+from donor_controller import get_donors_by_pincode  # You write this
+from pincode import get_nearby_pincodes
 
 class User(UserMixin):
     def __init__(self, id, username, role):
@@ -22,7 +24,7 @@ def create_app():
     login_manager.init_app(app)
     login_manager.login_view = "login"
 
-    @login_manager.user_loader
+    @login_manager.user_loader 
     def load_user(user_id):
         user_data = query("SELECT ALLUSERS.ID, USERNAME, ROLE FROM LOGIN, ALLUSERS WHERE LOGIN.ID = ALLUSERS.ID AND LOGIN.ID = :ID", {"ID": user_id})
         if user_data:
@@ -45,6 +47,8 @@ def create_app():
     @app.route('/about')
     def aboutus():
         return render_template("about.html")
+  
+    
     
     @app.route('/login', methods=['GET', 'POST'])
     def login():
@@ -335,6 +339,17 @@ def create_app():
     @app.route('/ngo_profile')
     def ngo_profile():
         return render_template("ngo_profile.html")
+    
+     #  NEW NGO DASHBOARD ROUTE
+    @app.route('/ngo')
+    def ngo_dashboard():
+        ngo_pincode = request.args.get('pincode')
+        if not ngo_pincode:
+            return "Pincode is required", 400
+        nearby_pincodes = get_nearby_pincodes(ngo_pincode, 10)
+        all_relevant_pincodes = [ngo_pincode] + nearby_pincodes
+        donor_dict = get_donors_by_pincode(all_relevant_pincodes)
+        return render_template('ngo.html', donors=donor_dict)
     
     @app.route('/volunteer')
     def volunteer():
