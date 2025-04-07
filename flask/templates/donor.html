@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Food Bridge - Make a Donation</title>
+    <title>Donor Dashboard</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='styles.css')}}">
     <style>
         body {
             font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 0;
-            background: url('/static/bg1.jpg') no-repeat center center/cover; /* Background image */
+            background: url('/static/bg1.jpg') center center/cover; /* Background image */
             color: #333;
             display: flex;
             height: 100vh;
@@ -18,13 +19,17 @@
         .container {
             display: flex;
             width: 100%;
+            min-height: fit-content;
+            margin-left: 280px;
+            align-content: center;
         }
 
         .sidebar {
             width: 250px;
-            height: flex;
+            height: 100vh;
             background: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
             padding: 20px;
+            position: fixed;
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -62,7 +67,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             border-radius: 10px;
             max-width: 600px;
-            margin: 40px auto;
+            margin: auto auto;
             align-self: center;
         }
 
@@ -84,7 +89,7 @@
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin: 30px auto;
+            margin: auto auto;
             align-self: center;
         }
 
@@ -167,6 +172,71 @@
             background-color: #388e3c;
         }
 
+        .profile-update {
+            flex: 1;
+            height: fit-content;
+            max-width: 600px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .profile-update h1 {
+            text-align: center;
+            color: #4CAF50;
+        }
+        .profile-update form {
+            display: flex;
+            flex-direction: column;
+        }
+        .profile-update label {
+            margin: 10px 0 5px;
+        }
+        .profile-update input, .profile-update select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .radio-group, .checkbox-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .radio-group label, .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .profile-update input[type="radio"], .profile-update input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .error-message {
+            color: red;
+            font-size: 14px;
+            display: none;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .container {
@@ -184,17 +254,17 @@
     </style>
 </head>
 <body>
+    <aside class="sidebar">
+        <img src="{{url_for('static', filename='logo.png')}}" alt="Food Bridge Logo" class="logo">
+        <div class="menu">
+            <a href="donor">Dashboard</a>
+            <a href="donor?section=profile">Profile</a>
+            <a href="feedback">Feedback</a>
+            <a href="support">Support</a>
+            <a href="logout">Log Out</a>
+        </div>
+    </aside>
     <div class="container">
-        <aside class="sidebar">
-            <h2>FOOD BRIDGE</h2>
-            <div class="menu">
-                <a href="donor">Dashboard</a>
-                <a href="donor?section=profile">Profile</a>
-                <a href="feedback">Feedback</a>
-                <a href="support">Support</a>
-                <a href="logout">Log Out</a>
-            </div>
-        </aside>
         {% if request.args.get('section','') == '' %}
         <main class="content">
             <h1>Make a Donation</h1>
@@ -225,35 +295,96 @@
                     <label for="donationDate">Donation Date:</label>
                     <input type="date" id="donationDate" name="donationDate" value="{{ current_date }}" min="{{ current_date }}" required>
                 </div>
-                <button type="submit">Donate</button>
+                <button type="submit" id="donation-btn">Donate</button>
             </form>
         </main>
         {% elif request.args.get('section','') == 'profile' %}
         <main class="profile-content">
             <h4>Donor Details</h4>
             <p>View your donation history and profile details below.</p>
+            <ul class="details-list" id="profile-info">
+                <li><strong>Username:</strong> <span id="username"></span></li>
+                <li><strong>Name:</strong> <span id="name"></span></li>
+                <li><strong>Email:</strong> <span id="email"></span></li>
+                <li><strong>Phone:</strong> <span id="phone"></span></li>
+                <li><strong>Gender:</strong> <span id="gender"></span></li>
+                <li><strong>Age:</strong> <span id="age"></span></li>
+                <li><strong>Address:</strong> <span id="address"></span></li>
+                <li><strong>Total Donations Made:</strong> <span id="total_dono"></span></li>
+                <li><strong>Last Donation Date:</strong> <span id="last_dono"></span></li>
+            </ul>
+            <button class="update-btn" onclick="window.location.href='/donor?section=update'">Update Profile</button>
+        </main>
+        {% elif request.args.get('section','') == 'update' %}
+        <main class="profile-update">
+            <h1>Update Your Profile</h1>
+            <form id="update-form">
+                <label><b>First Name</b></label>
+                <input type="text" id="first_name" name="first_name" placeholder="First Name" required>
     
-      
-                <div class="details-list" id="profile-info">
-                    <li><strong>Username:</strong> <span id="username"></span></li>
-                    <li><strong>Name:</strong> <span id="name"></span></li>
-                    <li><strong>Email:</strong> <span id="email"></span></li>
-                    <li><strong>Phone:</strong> <span id="phone"></span></li>
-                    <li><strong>Gender:</strong> <span id="gender"></span></li>
-                    <li><strong>Age:</strong> <span id="age"></span></li>
-                    <li><strong>Address:</strong> <span id="address"></span></li>
-                    <li><strong>Total Donations Made:</strong> <span id="total_dono"></span></li>
-                    <li><strong>Last Donation Date:</strong> <span id="last_dono"></span></li>
+                <label><b>Last Name</b></label>
+                <input type="text" id="last_name" name="last_name" placeholder="Last Name">
+    
+                <label><b>Date of Birth</b></label>
+                <input type="date" name="dob" id="dob">
+    
+                <label><b>Gender</b></label>
+                <div class="radio-group">
+                    <label><input type="radio" name="gender" value="Male" required> Male</label>
+                    <label><input type="radio" name="gender" value="Female" required> Female</label>
+                    <label><input type="radio" name="gender" value="Others" required> Others</label>
                 </div>
-                
-          
-                <button class="update-btn" onclick="window.location.href='/update_profile'">Update Profile</button>
     
-            </main>
+                <label><b>Email</b></label>
+                <input type="email" id="email" name="email" placeholder="Email" required>
+    
+                <label><b>Mobile Number</b></label>
+                <input type="tel" id="mobile" name="mobile" placeholder="Mobile Number" required pattern="\d{10}" title="Mobile number must be 10 digits.">
+    
+                <label><b>State</b></label>
+                <input type="text" id="state" name="state" placeholder="State" required>
+    
+                <label><b>District</b></label>
+                <input type="text" id="district" name="district" placeholder="District" required>
+    
+                <label><b>Street Name</b></label>
+                <input type="text" id="street" name="street" placeholder="Street Name" required>
+    
+                <label><b>House No/Locality</b></label>
+                <input type="text" id="house" name="house" placeholder="House No./Locality" required>
+    
+                <label><b>Pincode</b></label>
+                <input type="text" id="pincode" name="pincode" placeholder="Pincode" required pattern="\d{6}" title="Pincode must be exactly 6 digits." oninput="validatePincode()">
+                <p id="pincodeError" class="error-message">Pincode must be exactly 6 digits.</p>
+    
+                <label><b>Username</b></label>
+                <input type="text" id="username" name="username" placeholder="Username" required>
+    
+                <p id="updationError" class="error-message"></p>
+    
+                <div class="checkbox-group">
+                    <label><input type="checkbox" required> Accept terms and conditions</label>
+                </div>
+    
+                <button type="submit" class="btn">Update</button>
+            </form>
+        </main>
         {% endif %}
     </div>
 
     <script>
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function validatePincode() {
+            var pincode = document.getElementById("pincode").value;
+            var pincodeError = document.getElementById("pincodeError");
+            var pincodePattern = /^\d{6}$/; 
+
+            pincodeError.style.display = pincodePattern.test(pincode) ? "none" : "block";
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
             // Handle donation form only if it exists
             const donationForm = document.getElementById("donation-form");
@@ -261,6 +392,10 @@
                 donationForm.addEventListener("submit", async function (event) {
                     event.preventDefault(); // Prevent form from submitting normally
     
+                    donateBtn = document.getElementById("donation-btn")
+                    donateBtn.disabled = true;
+                    donateBtn.innerText = "Processing...";
+
                     let formData = new FormData(this); // Get form data
     
                     let response = await fetch("/donor", {
@@ -277,7 +412,12 @@
                     if (result.success) {
                         messageElement.style.color = "green";
                         messageElement.innerText = "✅ " + result.message;
+                        donateBtn.innerText = "Donate"
+                        await sleep(3000);
+                        window.location.href = '/donor';
                     } else {
+                        donateBtn.disabled = false;
+                        donateBtn.innerText = "Donate"
                         messageElement.style.color = "red";
                         messageElement.innerText = "❌ Error: " + result.error;
                     }
@@ -285,49 +425,134 @@
                     this.appendChild(messageElement); // Append message below the form
                 });
             }
+        });
     
-            async function loadProfile() {
-                console.log("loadProfile() function is running..."); // Debug log
+        async function loadProfile() {
+            console.log("loadProfile() function is running..."); // Debug log
+            try {
+                let response = await fetch("/get_profile"); // Call Flask API
+                let data = await response.json(); // Convert response to JSON
+                
+                if (data.error) {
+                    document.getElementById("profile-info").innerHTML = `<p>${data.error}</p>`;
+                    return;
+                }
+
+                let dobDate = new Date(data.dob); // Convert string to Date object
+                let today = new Date(); // Get current date
+
+                let age = today.getFullYear() - dobDate.getFullYear();
+                let monthDiff = today.getMonth() - dobDate.getMonth();
+                let dayDiff = today.getDate() - dobDate.getDate();
+
+                // If birthday hasn't occurred this year, subtract 1 from age
+                if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                    age--;
+                }
+
+                // Display user data
+                document.getElementById("username").innerText = data.username;
+                document.getElementById("name").innerText = data.fname + " " + data.lname;
+                document.getElementById("email").innerText = data.email;
+                document.getElementById("phone").innerText = data.phone;
+                document.getElementById("gender").innerText = data.gender;
+                document.getElementById("age").innerText = age;
+                document.getElementById("address").innerText = data.house + ", " + data.street + ", " + data.district + ", " + data.state + ", " + data.pincode;
+                document.getElementById("total_dono").innerText = data.total_dono;
+                document.getElementById("last_dono").innerText = data.last_dono;
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+            }
+        }
+
+        // Load profile section if present
+        const profileSection = document.getElementById("profile-info");
+        if (profileSection) {
+            loadProfile();
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const updateForm = document.getElementById("update-form");
+            if (updateForm) {
+                updateForm.addEventListener("submit", async function(event) {
+                    event.preventDefault(); // Prevent default form submission
+            
+                    let formData = new FormData(this);
+                    let jsonData = {}; // Convert FormData to JSON
+                
+                    formData.forEach((value, key) => {
+                        jsonData[key] = value;
+                    });
+            
+                    try {
+                        let response = await fetch("/update_user", {  // Correct route name
+                            method: "PUT",
+                            headers: {
+                                "Content-Type": "application/json",  // Send as JSON
+                            },
+                            body: JSON.stringify(jsonData),  // Send JSON data
+                        });
+                
+                        let result = await response.json(); // Get the JSON response
+                
+                        if (result.success) {
+                            alert("Update successful!");
+                            setTimeout(() => {
+                                window.location.href = "/donor?section=profile"; // Redirect after success
+                            }, 1500);
+                        } else {
+                            document.getElementById("updationError").innerText = result.error;
+                            document.getElementById("updationError").style.display = "block";
+                        }
+                    } catch (error) {
+                        console.error("Error updating profile:", error);
+                        document.getElementById("updationError").innerText = "An error occurred. Please try again.";
+                        document.getElementById("updationError").style.display = "block";
+                    }
+                });
+            }
+
+            async function loadProfileUpdate() {
+                console.log("loadProfileUpdate() function is running...");
                 try {
-                    let response = await fetch("/get_profile"); // Call Flask API
-                    let data = await response.json(); // Convert response to JSON
-                    
+                    let response = await fetch("/get_profile");
+                    let data = await response.json();
+
                     if (data.error) {
-                        document.getElementById("profile-info").innerHTML = `<p>${data.error}</p>`;
+                        document.getElementById("profileError").innerText = data.error;
                         return;
                     }
-    
-                    let dobDate = new Date(data.dob); // Convert string to Date object
-                    let today = new Date(); // Get current date
-    
-                    let age = today.getFullYear() - dobDate.getFullYear();
-                    let monthDiff = today.getMonth() - dobDate.getMonth();
-                    let dayDiff = today.getDate() - dobDate.getDate();
-    
-                    // If birthday hasn't occurred this year, subtract 1 from age
-                    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-                        age--;
-                    }
-    
-                    // Display user data
-                    document.getElementById("username").innerText = data.username;
-                    document.getElementById("name").innerText = data.fname + " " + data.lname;
-                    document.getElementById("email").innerText = data.email;
-                    document.getElementById("phone").innerText = data.phone;
-                    document.getElementById("gender").innerText = data.gender;
-                    document.getElementById("age").innerText = age;
-                    document.getElementById("address").innerText = data.house + ", " + data.street + ", " + data.district + ", " + data.state + ", " + data.pincode;
-                    document.getElementById("total_dono").innerText = data.total_dono;
-                    document.getElementById("last_dono").innerText = data.last_dono;
+
+                    // Prefill text inputs
+                    document.getElementById("first_name").value = data.fname;
+                    document.getElementById("last_name").value = data.lname;
+                    document.getElementById("email").value = data.email;
+                    document.getElementById("mobile").value = data.phone;
+                    document.getElementById("state").value = data.state;
+                    document.getElementById("district").value = data.district;
+                    document.getElementById("street").value = data.street;
+                    document.getElementById("house").value = data.house;
+                    document.getElementById("pincode").value = data.pincode;
+                    document.getElementById("username").value = data.username;
+                    document.getElementById("dob").value = data.dob;
+
+                    // Prefill gender (radio button)
+                    let genderOptions = document.getElementsByName("gender");
+                    genderOptions.forEach(radio => {
+                        if (radio.value.toLowerCase().trim() === data.gender.toLowerCase().trim()) {
+                            radio.checked = true;
+                        }
+                    });
+
                 } catch (error) {
                     console.error("Error fetching profile:", error);
                 }
             }
-    
-            // Load profile section if present
-            const profileSection = document.getElementById("profile-info");
-            if (profileSection) {
-                loadProfile();
+
+            // Check if current section is 'update' in the URL
+            const updateSection = document.getElementById("update-form");
+            if (updateSection) {
+                loadProfileUpdate();
             }
         });
     </script>

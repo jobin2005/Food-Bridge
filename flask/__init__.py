@@ -1,16 +1,27 @@
 import os
 
-from flask import Flask, render_template, request, jsonify, session, url_for
+from flask import Flask, render_template, request, jsonify, session, url_for, abort, redirect
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database import *
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
+from functools import wraps
 
 class User(UserMixin):
     def __init__(self, id, username, role):
         self.id = id
         self.username = username
         self.role = role
+
+def role_required(role):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if current_user.role.lower() != role.lower():
+                return abort(403, description="Access denied. You're not authorized to view this page.")  # Or redirect to a "not authorized" page
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 def create_app():
     # create and configure the app
@@ -74,7 +85,7 @@ def create_app():
         session.clear()  # Clears session data
         print(current_user.id)
         logout_user()
-        return jsonify({"success": True, "message": "Logged out successfully"})
+        return redirect(url_for('mainpage'))
     
     @app.route('/signup')
     def select_role():
@@ -120,23 +131,16 @@ def create_app():
             Phone = request.form.get('mobile')
             Email = request.form.get('email')
 
-                # Generate Address ID
-            result = query("SELECT ADDRESSID FROM ADDRESS ORDER BY ADDRESSID DESC")
-            if result:
-                Add_id = result[0][0] + 1
-            else:
-                Add_id = 101  # Starting ID when table is empty
-
+            # Generate Address ID
+            Add_id = query("SELECT ADDRESSID FROM ADDRESS ORDER BY ADDRESSID DESC")
+            Add_id = Add_id[0][0] + 1 if Add_id else 101
                 
             # Insert user details
             if role == "donor":
-                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)",
-                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))      
+                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))      
             elif role == "volunteer":
                 pincode = request.form.get('pincode')
-                print(new_id)
-                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
-                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
             else:
                 return jsonify({"success": False, "error": "Invalid role"})
 
@@ -147,8 +151,7 @@ def create_app():
             house = request.form.get('house')
             pincode = request.form.get('pincode')
 
-            insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",
-                (Add_id, state, district, street, house, pincode))
+            insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)", (Add_id, state, district, street, house, pincode))
 
             return jsonify({"success": True})
           
@@ -166,6 +169,7 @@ def create_app():
     
     @app.route('/donor', methods=['GET', 'POST'])
     @login_required
+    @role_required('donor')
     def donor():
         current_date = datetime.now().strftime("%Y-%m-%d")
         user_fn = query("SELECT FN FROM DONOR WHERE ID = :ID",{"ID":current_user.id})[0][0]
@@ -192,7 +196,7 @@ def create_app():
                 # Insert into FOOD table (Using parameterized query)
                 insert("INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE) VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'))", (food_id, item_name, item_category, quantity, 'ONHOLD', shelf_life))
 
-                insert("INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE) VALUES (:1, :2, :3, 'UNASSIGNED', TO_DATE(:4, 'YYYY-MM-DD'))", (dono_id, food_id, current_user.id, donation_date_obj))
+                insert("INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE) VALUES (:1, :2, :3, 'PENDING', TO_DATE(:4, 'YYYY-MM-DD'))", (dono_id, food_id, current_user.id, donation_date_obj))
 
                 return jsonify({"success": True, "message": "Donation successful!"})
 
@@ -249,24 +253,30 @@ def create_app():
                 "street": address_data[0][2],
                 "house": address_data[0][3],
                 "pincode": address_data[0][4],
-                "total_dono": dono_count,
-                "last_dono": last_dono
             }
 
             # Add donor-specific fields
             if user_role == "donor":
                 dono_count = query("SELECT COUNT(*) FROM DONATION WHERE DONORID = :1", (user_id,))
-                last_dono_result = query(
-                    "SELECT TO_CHAR(DONATIONDATE, 'Month DD, YYYY') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION WHERE DONORID = :1)",
-                    (user_id,))
+                last_dono_result = query("SELECT TO_CHAR(DONATIONDATE, 'Month DD, YYYY') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION WHERE DONORID = :1)", (user_id,))
                 user_profile["total_dono"] = dono_count[0][0] if dono_count else 0
                 user_profile["last_dono"] = last_dono_result[0][0] if last_dono_result else "N/A"
+            elif user_role == "volunteer":
+                delv_count = query("SELECT COUNT(*) FROM DONATION_ASSIGNMENT WHERE VOLUNTEER_ID = :1", (user_id,))
+                last_delv_result = query("SELECT TO_CHAR(DONATIONDATE, 'Month DD, YYYY') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION_ASSIGNMENT WHERE VOLUNTEER_ID = :1)", (user_id,))
+                user_profile["total_delv"] = delv_count[0][0] if delv_count else 0
+                user_profile["last_delv"] = last_delv_result[0][0] if last_delv_result else "N/A"
 
             return jsonify(user_profile)
 
         except Exception as e:
             print("Profile fetch error:", e)
             return jsonify({"error": str(e)}), 500
+
+    @app.route('/update_profile')
+    @login_required
+    def update_profile():
+        return render_template("update_profile.html")
 
     @app.route('/update_user', methods=['PUT'])
     def update_user():
@@ -333,6 +343,8 @@ def create_app():
 
     
     @app.route('/ngo')
+    @login_required
+    @role_required('ngo')
     def ngo():
         return render_template("ngo.html")
     
@@ -341,21 +353,19 @@ def create_app():
         return render_template("ngo_profile.html")
     
     @app.route('/volunteer')
+    @login_required
+    @role_required('volunteer')
     def volunteer():
-        # Example dummy data - replace with database query later
-        assignments = [
-            {"donation_id": "abc@12_1", "location": "AbcXX", "status": "Pending"},
-            {"donation_id": "yhg2@1", "location": "AfgHx", "status": "Active"},
-        ]
-        return render_template('volunteer.html', assignments=assignments)
+        result = query("SELECT FN FROM VOLUNTEER WHERE ID = :ID", {"ID": current_user.id})
+        if not result:
+            return "Volunteer profile not found", 404  # or redirect, or render a friendly error page
+        user_fn = result[0][0]
+
+        return render_template("volunteer.html", user_fn=user_fn)
     
     @app.route('/volunteer_profile')
     def volunteer_profile():
         return render_template("volunteer_profile.html")
-
-    @app.route('/update_profile')
-    def update_profile():
-        return render_template("update_profile.html")
 
     return app
 
