@@ -83,6 +83,12 @@
             max-width: 600px;
             margin-top: 20px;
         }
+        select, button {
+            padding: 8px;
+            margin-top: 10px;
+            width: 100%;
+            font-size: 14px;
+        }
         @media (max-width: 768px) {
             .sidebar {
                 width: 200px;
@@ -104,16 +110,40 @@
             <a href="/">Log Out</a>
         </div>
     </div>
+
     <div class="dashboard">
         <h1>Welcome, Sir!</h1>
+        <div class="card" style="margin-top: 20px;">
+            <h2>Nearby Donors</h2>
+            <table class="donation-table">
+                <thead>
+                    <tr>
+                        <th>Donor Name</th>
+                        <th>Food Item</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for donor_name,food_name in donor_food_data %}
+                        <tr>
+                            <td>{{ donor_name }}</td>
+                            <td>{{ food_name if food_name else 'N/A' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="2">No nearby donors found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Stats Card -->
         <div class="stats">
             <div class="card">
                 <h3>Total Donations</h3>
-                
                 <p><strong>1532</strong></p>
                 <canvas id="donationsChart"></canvas>
             </div>
         </div>
+
+        <!-- Donations Section -->
         <div class="donations">
             <div class="card">
                 <h3>Unclaimed Donations</h3>
@@ -137,11 +167,13 @@
                 </table>
             </div>
         </div>
+
         <div class="card chart-container">
             <h3>Donations Overview</h3>
-            
+            <!-- Chart placeholder -->
         </div>
     </div>
+
     <script>
         const ctx = document.getElementById('donationsChart').getContext('2d');
         const donationsChart = new Chart(ctx, {

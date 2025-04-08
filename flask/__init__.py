@@ -1,11 +1,13 @@
-import os
-
 from flask import Flask, render_template, request, jsonify, session, url_for, abort, redirect
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from database import *
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from functools import wraps
+
+from database import *
+from donor_controller import get_donors_by_pincode
+from pincode import get_nearby_pincodes
+from db_utils import get_ngo_pincode
 
 class User(UserMixin):
     def __init__(self, id, username, role):
@@ -131,16 +133,27 @@ def create_app():
             Phone = request.form.get('mobile')
             Email = request.form.get('email')
 
-            # Generate Address ID
-            Add_id = query("SELECT ADDRESSID FROM ADDRESS ORDER BY ADDRESSID DESC")
-            Add_id = Add_id[0][0] + 1 if Add_id else 101
-                
-            # Insert user details
+            
+                # Generate Address ID
+            Add_id = query("SELECT NVL(MAX(ADDRESSID), 100) FROM ADDRESS")[0][0] + 1
+
+            ngo_name = request.form.get('ngo_name')
+            reg_id = request.form.get('reg_id')
+            owner_name = request.form.get('owner')
+
+             # Insert user details
             if role == "donor":
-                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))      
+                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)",
+                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
             elif role == "volunteer":
                 pincode = request.form.get('pincode')
-                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+                print(new_id)
+                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
+                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+            elif role == "ngo":
+                 insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE,REGISTRATION_ID) VALUES (:1, :2, :3, :4, :5, :6, :7)",
+                 (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id))
+
             else:
                 return jsonify({"success": False, "error": "Invalid role"})
 
@@ -150,11 +163,16 @@ def create_app():
             street = request.form.get('street')
             house = request.form.get('house')
             pincode = request.form.get('pincode')
-
-            insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)", (Add_id, state, district, street, house, pincode))
+           
+            if role == 'ngo':
+                 
+               insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET,PINCODE) VALUES (:1, :2, :3, :4, :5)",
+                (Add_id, state, district, street, pincode))                
+            else:
+                 insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",
+                (Add_id, state, district, street,pincode)) 
 
             return jsonify({"success": True})
-          
 
         return render_template("register.html", min_date=min_date)
 
@@ -223,6 +241,8 @@ def create_app():
                 profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB, ADDRESSID FROM DONOR WHERE ID = :1", (user_id,))
             elif user_role == "volunteer":
                 profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB, ADDRESSID FROM VOLUNTEER WHERE ID = :1", (user_id,))
+            elif user_role == "ngo":
+                 profile_data=query("select NGONAME,EMAIL,PHONE,ADDRESSID from NGO where ID = :1", (user_id,))
             else:
                 return jsonify({"error": "Invalid user role"}), 400
 
@@ -231,6 +251,12 @@ def create_app():
 
             address_id = profile_data[0][6]
             address_data = query("SELECT STATE, DISTRICT, STREET, HOUSE, PINCODE FROM ADDRESS WHERE ADDRESSID = :1", (address_id,))
+
+            if user_role != "ngo":
+                 address_data = query("SELECT STATE, DISTRICT, STREET, HOUSE, PINCODE FROM ADDRESS WHERE ADDRESSID = :1", (address_id,))
+            else:
+                 address_data = query("SELECT STATE, DISTRICT, STREET,PINCODE FROM ADDRESS WHERE ADDRESSID = :1", (address_id,))
+
             if not address_data:
                 return jsonify({"error": "Address not found"}), 404
 
@@ -342,12 +368,25 @@ def create_app():
             return jsonify({"success": False, "error": str(e)}), 500  # Return error details
 
     
-    @app.route('/ngo')
+    @app.route('/ngo',methods=['GET','POST'])
     @login_required
     @role_required('ngo')
     def ngo():
-        return render_template("ngo.html")
-    
+        if current_user.role != 'ngo':
+           return "Access denied", 403
+
+        ngo_pincode = get_ngo_pincode(current_user.id)
+        
+        if not ngo_pincode:
+           return "Pincode is required", 400
+
+        nearby_pincodes = get_nearby_pincodes(ngo_pincode, 50)
+        all_relevant_pincodes = [ngo_pincode] + nearby_pincodes
+        donor_food_data= get_donors_by_pincode(all_relevant_pincodes)
+        print("Donor-Food Data:", donor_food_data)
+        
+        return render_template('ngo.html', donor_food_data=donor_food_data)
+   
     @app.route('/ngo_profile')
     def ngo_profile():
         return render_template("ngo_profile.html")
