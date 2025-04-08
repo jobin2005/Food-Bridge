@@ -280,21 +280,40 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>abc@12_1</td>
-                            <td>AbcXX</td>
-                            <td>Pending</td>
-                            <td><button>Start Pickup</button></td>
-                        </tr>
-                        <tr>
-                            <td>yhg2@1</td>
-                            <td>AfgHx</td>
-                            <td>Active</td>
-                            <td><button>Start Pickup</button></td>
-                        </tr>
+                        {% for assignment in assignments %}
+                            <tr>
+                                <td>{{ assignment.donation_id }}</td>
+                                <td>{{ assignment.pickup_location }}</td>
+                                <td>{{ assignment.status }}</td>
+                                <td>
+                                    {% if assignment.status == 'Pending' %}
+                                        <form method="POST" action="{{ url_for('start_pickup') }}">
+                                            <input type="hidden" name="donation_id" value="{{ assignment.donation_id }}">
+                                            <button type="submit">Start Pickup</button>
+                                        </form>
+                                    {% elif assignment.status == 'Active' %}
+                                        <button disabled>In Progress</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </section>
+            
+            {% if delivery_assignment %}
+            <section class="delivery-instructions">
+                <h4>Deliver To NGO</h4>
+                <p><strong>NGO Name:</strong> {{ delivery_assignment.ngo_name }}</p>
+                <p><strong>Delivery Address:</strong> {{ delivery_assignment.ngo_address }}</p>
+                <p><strong>Contact:</strong> {{ delivery_assignment.ngo_contact }}</p>
+                
+                <form method="POST" action="{{ url_for('mark_delivered') }}">
+                    <input type="hidden" name="donation_id" value="{{ delivery_assignment.donation_id }}">
+                    <button type="submit">Mark as Delivered</button>
+                </form>
+            </section>
+            {% endif %}
         </main>
         {% elif request.args.get('section','') == 'profile' %}
         <main class="profile-content">
