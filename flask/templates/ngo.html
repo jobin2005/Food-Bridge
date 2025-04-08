@@ -123,10 +123,10 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for donor in donor_food_data %}
+                    {% for donor_name,food_name in donor_food_data %}
                         <tr>
-                            <td>{{ donor.donor_name }}</td>
-                            <td>{{ donor.food_name if donor.food_name else 'N/A' }}</td>
+                            <td>{{ donor_name }}</td>
+                            <td>{{ food_name if food_name else 'N/A' }}</td>
                         </tr>
                     {% else %}
                         <tr><td colspan="2">No nearby donors found.</td></tr>

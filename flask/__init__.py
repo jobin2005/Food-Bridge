@@ -369,6 +369,8 @@ def create_app():
         nearby_pincodes = get_nearby_pincodes(ngo_pincode, 50)
         all_relevant_pincodes = [ngo_pincode] + nearby_pincodes
         donor_food_data= get_donors_by_pincode(all_relevant_pincodes)
+        print("Donor-Food Data:", donor_food_data)
+
         
         return render_template('ngo.html', donor_food_data=donor_food_data)
 
