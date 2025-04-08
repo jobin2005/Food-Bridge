@@ -113,25 +113,27 @@
 
     <div class="dashboard">
         <h1>Welcome, Sir!</h1>
-
-        <!-- ✅ Donor Selection Form -->
         <div class="card" style="margin-top: 20px;">
-            <h2>Select Donor</h2>
-            <form method="post">
-                <label for="donor">Choose a donor:</label>
-                <select name="donor" id="donor">
-                    {% for pincode, donors in donors.items() %}
-                        <optgroup label="Pincode: {{ pincode }}">
-                            {% for donor in donors %}
-                                <option value="{{ donor.id }}">{{ donor.name }}</option>
-                            {% endfor %}
-                        </optgroup>
+            <h2>Nearby Donors</h2>
+            <table class="donation-table">
+                <thead>
+                    <tr>
+                        <th>Donor Name</th>
+                        <th>Food Item</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for donor in donor_food_data %}
+                        <tr>
+                            <td>{{ donor.donor_name }}</td>
+                            <td>{{ donor.food_name if donor.food_name else 'N/A' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="2">No nearby donors found.</td></tr>
                     {% endfor %}
-                </select>
-                <button type="submit">Assign</button>
-            </form>
+                </tbody>
+            </table>
         </div>
-
         <!-- Stats Card -->
         <div class="stats">
             <div class="card">

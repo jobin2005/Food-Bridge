@@ -1,34 +1,22 @@
 from database import query
 
+def get_donors_by_pincode(pincodes):
+    if isinstance(pincodes, int):
+        pincodes = [pincodes]
 
-def get_donors_by_pincode(pincode_list):
-    if not pincode_list:
-        return {}
+    if not pincodes:
+        return []  # Avoid executing invalid SQL
 
-    # Generate Oracle bind variables: :1, :2, ...
-    bind_placeholders = ','.join([f':{i+1}' for i in range(len(pincode_list))])
+    bind_vars = {f'p{i}': pin for i, pin in enumerate(pincodes)}
+    format_strings = ', '.join(f':p{i}' for i in range(len(pincodes)))
+
     sql = f"""
-        SELECT id, fn || ' ' || ln AS name, pincode
-        FROM donor
-        WHERE pincode IN ({bind_placeholders})
+        SELECT d.FN || ' ' || d.LN AS donor_name, f.foodname AS food_name
+        FROM donor d
+        JOIN donation dn ON d.id = dn.donorid
+        JOIN food f ON dn.foodid = f.foodid
+        JOIN address a ON d.addressid = a.addressid
+        WHERE a.pincode IN ({format_strings})
     """
 
-    try:
-        # Unpack the list using * so that it matches :1, :2, ...
-        donors = query(sql, params=tuple(pincode_list))
-
-        # Convert results to dictionary grouped by pincode
-        donor_dict = {}
-        for donor_id, name, pincode in donors:
-            donor_info = {
-                "id": donor_id,
-                "name": name,
-                "pincode": pincode
-            }
-            donor_dict.setdefault(pincode, []).append(donor_info)
-
-        return donor_dict
-
-    except Exception as e:
-        print("Error fetching donors by pincode:", str(e))
-        return {}
+    return query(sql, bind_vars)

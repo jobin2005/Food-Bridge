@@ -7,7 +7,7 @@ pincode_df = pd.read_csv(r'C:\Users\HP\Downloads\pincode_lat_long.csv')
 pincode_df.dropna(subset=['latitude', 'longitude'], inplace=True)
 pincode_df['pincode'] = pincode_df['key'].astype(str).str.extract(r'(\d{6})')
 
-def get_nearby_pincodes(base_pincode, radius_km=10):
+def get_nearby_pincodes(base_pincode, radius_km=50):
     base_pincode = str(base_pincode)
 
     if base_pincode not in pincode_df['pincode'].values:
