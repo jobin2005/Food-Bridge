@@ -195,18 +195,24 @@ def create_app():
     @role_required('donor')
     def donor():
         current_date = datetime.now().strftime("%Y-%m-%d")
-        user_fn = query("SELECT FN FROM DONOR WHERE ID = :ID",{"ID":current_user.id})[0][0]
+        
+        user_fn_result = query("SELECT FN FROM DONOR WHERE ID = :ID", {"ID": current_user.id})
+        user_fn = user_fn_result[0][0] if user_fn_result else "Donor"
+        
         if request.method == "POST":
             try:
                 item_name = request.form.get('itemName')
                 quantity = int(request.form.get('quantity'))  # Ensure integer
                 item_category = request.form.get('itemCategory')
-                donation_date = request.form.get('donationDate')
+                donation_date = request.form.get('donationDate')  # Expected format: YYYY-MM-DD
                 shelf_life_days = int(request.form.get('shelfLife'))
 
-                # Calculate shelf life (convert to proper date format)
+                # Convert to datetime object
                 donation_date_obj = datetime.strptime(donation_date, '%Y-%m-%d')
-                shelf_life = (donation_date_obj + timedelta(days=shelf_life_days)).strftime('%Y-%m-%d')
+
+                # Format dates as strings for Oracle
+                donation_date_str = donation_date_obj.strftime('%Y-%m-%d')
+                shelf_life_str = (donation_date_obj + timedelta(days=shelf_life_days)).strftime('%Y-%m-%d')
 
                 # Generate new DONATIONID
                 x = query("SELECT DONATIONID FROM DONATION ORDER BY DONATIONID DESC")
@@ -216,16 +222,23 @@ def create_app():
                 y = query("SELECT FOODID FROM FOOD ORDER BY FOODID DESC")
                 food_id = 101 if not y or not y[0][0] else y[0][0] + 1
 
-                # Insert into FOOD table (Using parameterized query)
-                insert("INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE) VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'))", (food_id, item_name, item_category, quantity, 'PENDING', shelf_life))
+                # Insert into FOOD table
+                insert("""
+                    INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE)
+                    VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'))
+                """, (food_id, item_name, item_category, quantity, 'PENDING', shelf_life_str))
 
-                insert("INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE) VALUES (:1, :2, :3, 'PENDING', TO_DATE(:4, 'YYYY-MM-DD'))", (dono_id, food_id, current_user.id, donation_date_obj))
-                
+                # Insert into DONATION table
+                insert("""
+                    INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE)
+                    VALUES (:1, :2, :3, 'PENDING', TO_DATE(:4, 'YYYY-MM-DD'))
+                """, (dono_id, food_id, current_user.id, donation_date_str))
+
                 return jsonify({"success": True, "message": "Donation successful!"})
 
             except Exception as e:
                 return jsonify({"success": False, "error": str(e)})
- 
+
         return render_template("donor.html", current_date=current_date, user_fn=user_fn)
     
     @app.route('/donor_profile')
@@ -309,12 +322,29 @@ def create_app():
             # Add donor-specific fields
             if user_role == "donor":
                 dono_count = query("SELECT COUNT(*) FROM DONATION WHERE DONORID = :1", (user_id,))
-                last_dono_result = query("SELECT TO_CHAR(DONATIONDATE, 'Month DD, YYYY') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION WHERE DONORID = :1)", (user_id,))
+                last_dono_result = query("""
+                    SELECT TO_CHAR(DONATIONDATE, 'FXFMMonth DD, YYYY', 'NLS_DATE_LANGUAGE = American')
+                    FROM DONATION
+                    WHERE DONATIONID = (
+                        SELECT MAX(DONATIONID)
+                        FROM DONATION
+                        WHERE DONORID = :1
+                    )
+                """, (user_id,))
+                
                 user_profile["total_dono"] = dono_count[0][0] if dono_count else 0
                 user_profile["last_dono"] = last_dono_result[0][0] if last_dono_result else "N/A"
             elif user_role == "volunteer":
                 delv_count = query("SELECT COUNT(*) FROM DONATION_ASSIGNMENT WHERE VOLUNTEER_ID = :1", (user_id,))
-                last_delv_result = query("SELECT TO_CHAR(DONATIONDATE, 'Month DD, YYYY') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION_ASSIGNMENT WHERE VOLUNTEER_ID = :1)", (user_id,))
+                last_delv_result = query("""
+                    SELECT TO_CHAR(D.DONATIONDATE, 'FMMonth DD, YYYY', 'NLS_DATE_LANGUAGE = American')
+                    FROM DONATION D
+                    JOIN DONATION_ASSIGNMENT A ON D.DONATIONID = A.DONATION_ID
+                    WHERE A.VOLUNTEER_ID = :1
+                    ORDER BY D.DONATIONDATE DESC
+                    FETCH FIRST 1 ROWS ONLY
+                """, (user_id,))
+                
                 user_profile["total_delv"] = delv_count[0][0] if delv_count else 0
                 user_profile["last_delv"] = last_delv_result[0][0] if last_delv_result else "N/A"
 
