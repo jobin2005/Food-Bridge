@@ -39,6 +39,12 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         user_data = query("SELECT ALLUSERS.ID, USERNAME, ROLE FROM LOGIN, ALLUSERS WHERE LOGIN.ID = ALLUSERS.ID AND LOGIN.ID = :ID", {"ID": user_id})
+
+        admin_data = query("SELECT ADMIN_ID, NAME, PASSWORD FROM ADMIN_ WHERE ADMIN_ID = :ID", {"ID": user_id})
+
+        if admin_data:
+            return User(admin_data[0][0], admin_data[0][1], "admin")
+        
         if user_data:
             return User(user_data[0][0], user_data[0][1], user_data[0][2])
         return None
@@ -68,14 +74,23 @@ def create_app():
 
             user_data = query("SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME", {"USERNAME": username})
 
+            admin_data = query("SELECT ADMIN_ID, NAME, PASSWORD FROM ADMIN_ WHERE NAME = :USERNAME", {"USERNAME": username})
+
+            if admin_data:
+                if password == admin_data[0][2]:
+                    user = User(admin_data[0][0],admin_data[0][1],"admin")
+                    login_user(user, remember=True)
+                    session['user_id'] = admin_data[0][0]
+                    return jsonify({"success": True, "role": "admin"})
+                    
+
             if user_data:  # If user exists
-                stored_password = user_data[0][2]  # Get stored password from DB
-                if password == stored_password:  # Check password
-                    user_role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(user_data[0][0],))
+                if password == user_data[0][2]:  # Check password
+                    user_role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(user_data[0][0],))[0][0]
                     user = User(user_data[0][0], user_data[0][1], user_role)
                     login_user(user, remember=True)
                     session['user_id'] = user_data[0][0]  # Store user ID in session  
-                    return jsonify({"success": True, "role": user_role})  # Search the role from the DB and redirects to the pge accordingly
+                    return jsonify({"success": True, "role": user_role})  # Search the role from the DB and redirects to the page accordingly
             return jsonify({"success": False, "error": "Invalid username or password!"}) 
 
         return render_template("login.html", user=current_user)
@@ -85,7 +100,6 @@ def create_app():
     @login_required
     def logout():
         session.clear()  # Clears session data
-        print(current_user.id)
         logout_user()
         return redirect(url_for('mainpage'))
     
@@ -147,7 +161,6 @@ def create_app():
                     (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
             elif role == "volunteer":
                 pincode = request.form.get('pincode')
-                print(new_id)
                 insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
                     (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
             elif role == "ngo":
@@ -175,7 +188,6 @@ def create_app():
             return jsonify({"success": True})
 
         return render_template("register.html", min_date=min_date)
-
     
     @app.route('/feedback')
     def feedback():
@@ -401,6 +413,14 @@ def create_app():
     @app.route('/volunteer_profile')
     def volunteer_profile():
         return render_template("volunteer_profile.html")
+    
+    @app.route('/admin')
+    @login_required
+    @role_required('admin')
+    def admin():
+        unverified_ngos = query("SELECT * FROM NGO WHERE VERIFICATION_STATUS = 0 ORDER BY ID")
+        pending_donos = query("SELECT D.DONATIONID, D.FOODID, D.DONORID, D.STATUS, TO_CHAR(D.DONATIONDATE, 'Month DD, YYYY'), D.NGO_ID, R.FN, R.LN, R.PHONE, A.STATE, A.DISTRICT, A.STREET, A.HOUSE, A.PINCODE, F.FOODNAME, F.QUANTITY, TO_CHAR(F.SHELFLIFE, 'DD/MM/YYYY') FROM DONATION D JOIN DONOR R ON D.DONORID = R.ID JOIN ADDRESS A ON R.ADDRESSID = A.ADDRESSID JOIN FOOD F ON D.FOODID = F.FOODID WHERE D.STATUS = 'PENDING' ORDER BY D.DONATIONID")
+        return render_template("admin.html",unverified_ngos=unverified_ngos, pending_donos=pending_donos)
 
     return app
 
