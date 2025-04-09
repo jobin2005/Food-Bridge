@@ -1,5 +1,15 @@
 import os
 
+
+
+
+
+from donor_controller import get_donors_by_pincode  # You write this
+from pincode import get_nearby_pincodes
+from flask import abort
+from db_utils import get_ngo_pincode
+
+
 from flask import Flask, render_template, request, jsonify, session, url_for, abort, redirect
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database import *
@@ -461,108 +471,148 @@ def create_app():
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500  # Return error details
 
+ 
+    @app.route('/accept_donation', methods=['POST'])
+    def accept_donation():
+        donation_id = request.form.get('donation_id')  # comes from the hidden input in the form
+        ngo_id = current_user.id  # gets the current logged-in NGO's user id
+
+        if donation_id and ngo_id:
+           update(
+            "UPDATE donation SET ngo_id = :ngo_id WHERE donationid = :donation_id",
+            {'donation_id': donation_id, 'ngo_id': ngo_id}
+        )
+
+        return redirect(url_for('ngo_dashboard'))
     
     @app.route('/ngo')
     def ngo():
         user_id = session.get('user_id')
         if not user_id:
             return redirect('/login')
-            
-        current_year=datetime.now().year
 
-    # Total donations count
+        current_year = datetime.now().year
+
+        # 👉 Total completed donations count
         total_donations = query("SELECT count(*) FROM DONATION_ASSIGNMENT WHERE NGO_ID = :1 and STATUS='COMPLETED'", (user_id,))
         c = total_donations[0][0] if total_donations else 0
 
-        name=query("select NGONAME from NGO where ID = :1",(user_id,))
-        org_name=name[0][0]
+        # 👉 NGO name
+        name = query("SELECT NGONAME FROM NGO WHERE ID = :1", (user_id,))
+        org_name = name[0][0]
 
-    # Base month dictionary to hold counts
+        # 👉 Base month dictionary for donation chart
         month_template = {
-        'Jan': 0, 'Feb': 0, 'Mar': 0, 'Apr': 0,
-        'May': 0, 'Jun': 0, 'Jul': 0, 'Aug': 0,
-        'Sep': 0, 'Oct': 0, 'Nov': 0, 'Dec': 0
+            'Jan': 0, 'Feb': 0, 'Mar': 0, 'Apr': 0,
+            'May': 0, 'Jun': 0, 'Jul': 0, 'Aug': 0,
+            'Sep': 0, 'Oct': 0, 'Nov': 0, 'Dec': 0
         }
 
-    # Query to get monthly data change STATU='completed' after pulling
+        # 👉 Monthly donation data for chart (STATUS = 'COMPLETED')
         donation_data = query("""
-        SELECT 
-            TO_CHAR(DONATIONDATE, 'Mon') AS Month_Name,
-            EXTRACT(MONTH FROM DONATIONDATE) AS Month_Number,
-            COUNT(*) AS Total_Donations
-        FROM 
-            DONATION
-        WHERE 
-            EXTRACT(YEAR FROM DONATIONDATE) = :1
-            AND NGO_ID = :2 AND STATUS='COMPLETED' 
-        GROUP BY 
-            TO_CHAR(DONATIONDATE, 'Mon'),
-            EXTRACT(MONTH FROM DONATIONDATE)
-        ORDER BY 
-            Month_Number
-    """, (current_year, user_id))
+            SELECT 
+                TO_CHAR(DONATIONDATE, 'Mon') AS Month_Name,
+                EXTRACT(MONTH FROM DONATIONDATE) AS Month_Number,
+                COUNT(*) AS Total_Donations
+            FROM 
+                DONATION
+            WHERE 
+                EXTRACT(YEAR FROM DONATIONDATE) = :1
+                AND NGO_ID = :2 AND STATUS='COMPLETED' 
+            GROUP BY 
+                TO_CHAR(DONATIONDATE, 'Mon'),
+                EXTRACT(MONTH FROM DONATIONDATE)
+            ORDER BY 
+                Month_Number
+        """, (current_year, user_id))
 
-    # Fill the template with query results
+        # 👉 Fill chart data from the result
         for row in donation_data:
-            month_name = row[0].strip()  # Just in case there's trailing space
+            month_name = row[0].strip()
             c_count = row[2]
             if month_name in month_template:
                 month_template[month_name] = c_count
 
-    # Prepare final chart data
         month_labels = list(month_template.keys())
         donation_values = list(month_template.values())
 
+        # 👉 Unclaimed donation details (STATUS: ACTIVE/PENDING)
         unclaimed_donations = query("""
-        SELECT 
-            DNR.FN || ' ' || DNR.LN AS Donor_Name,
-            ADDR.STREET AS Street_Name,
-            D.STATUS AS Donation_Status,
-            F.FOODNAME AS Food_Item,
-            TO_CHAR(D.DONATIONDATE, 'YYYY-MM-DD') AS Donation_Date
-        FROM 
-            DONATION D
-        JOIN 
-            DONOR DNR ON D.DONORID = DNR.ID
-        JOIN 
-            ADDRESS ADDR ON DNR.ADDRESSID = ADDR.ADDRESSID
-        JOIN 
-            FOOD F ON D.FOODID = F.FOODID
-        WHERE 
-            D.NGO_ID = :1
-            AND D.STATUS IN ('ACTIVE', 'PENDING')""", (user_id,))
-        
-        claimed_donations = query("""
-        SELECT 
-            DNR.FN || ' ' || DNR.LN AS Donor_Name,
-            ADDR.STREET AS Street_Name,
-            F.FOODNAME AS Food_Item,
-            TO_CHAR(D.DONATIONDATE, 'YYYY-MM-DD') AS Donation_Date
-        FROM 
-            DONATION D
-        JOIN 
-            DONOR DNR ON D.DONORID = DNR.ID
-        JOIN 
-            ADDRESS ADDR ON DNR.ADDRESSID = ADDR.ADDRESSID
-        JOIN 
-            FOOD F ON D.FOODID = F.FOODID
-        WHERE 
-            D.NGO_ID = :1
-            AND D.STATUS='COMPLETED'""", (user_id,))
+            SELECT 
+                DNR.FN || ' ' || DNR.LN AS Donor_Name,
+                ADDR.STREET AS Street_Name,
+                D.STATUS AS Donation_Status,
+                F.FOODNAME AS Food_Item,
+                TO_CHAR(D.DONATIONDATE, 'YYYY-MM-DD') AS Donation_Date
+            FROM 
+                DONATION D
+            JOIN 
+                DONOR DNR ON D.DONORID = DNR.ID
+            JOIN 
+                ADDRESS ADDR ON DNR.ADDRESSID = ADDR.ADDRESSID
+            JOIN 
+                FOOD F ON D.FOODID = F.FOODID
+            WHERE 
+                D.NGO_ID = :1
+                AND D.STATUS IN ('ACTIVE', 'PENDING')
+        """, (user_id,))
 
+        # 👉 Claimed donation details (STATUS: COMPLETED)
+        claimed_donations = query("""
+            SELECT 
+                DNR.FN || ' ' || DNR.LN AS Donor_Name,
+                ADDR.STREET AS Street_Name,
+                F.FOODNAME AS Food_Item,
+                TO_CHAR(D.DONATIONDATE, 'YYYY-MM-DD') AS Donation_Date
+            FROM 
+                DONATION D
+            JOIN 
+                DONOR DNR ON D.DONORID = DNR.ID
+            JOIN 
+                ADDRESS ADDR ON DNR.ADDRESSID = ADDR.ADDRESSID
+            JOIN 
+                FOOD F ON D.FOODID = F.FOODID
+            WHERE 
+                D.NGO_ID = :1
+                AND D.STATUS='COMPLETED'
+        """, (user_id,))
+
+        # 👉 Claimed donation count
         claimed_result = query(
-        "SELECT COUNT(*) FROM DONATION_ASSIGNMENT WHERE NGO_ID = :1 AND STATUS = 'COMPLETED'", (user_id,))
+            "SELECT COUNT(*) FROM DONATION_ASSIGNMENT WHERE NGO_ID = :1 AND STATUS = 'COMPLETED'", (user_id,))
         claimed_count = claimed_result[0][0] if claimed_result else 0
 
-        # Total unclaimed donations count
+        # 👉 Unclaimed donation count
         unclaimed_result = query(
-        "SELECT COUNT(*) FROM DONATION WHERE NGO_ID = :1 AND STATUS IN ('ACTIVE', 'PENDING')", (user_id,))
+            "SELECT COUNT(*) FROM DONATION WHERE NGO_ID = :1 AND STATUS IN ('ACTIVE', 'PENDING')", (user_id,))
         unclaimed_count = unclaimed_result[0][0] if unclaimed_result else 0
 
-        return render_template("ngo.html", 
-                           total_donations=c,org_name=org_name,
-                           month_labels=month_labels,
-                           donation_values=donation_values,current_year=current_year,unclaimed_donations=unclaimed_donations,claimed_donations=claimed_donations,claimed_count=claimed_count,unclaimed_count=unclaimed_count)
+        # ----------------------------------------------
+        # ✅ Nearby Donors Logic from ngo_donations route
+        # ----------------------------------------------
+        ngo_pincode = get_ngo_pincode(user_id)
+
+        if not ngo_pincode:
+            return "Pincode is required", 400
+
+        nearby_pincodes = get_nearby_pincodes(ngo_pincode, 50)
+        all_relevant_pincodes = [ngo_pincode] + nearby_pincodes
+        donor_food_data = get_donors_by_pincode(all_relevant_pincodes)
+        print("Donor-Food Data:", donor_food_data)
+
+        # 👉 Final render
+        return render_template("ngo.html",
+            total_donations=c,
+            org_name=org_name,
+            month_labels=month_labels,
+            donation_values=donation_values,
+            current_year=current_year,
+            unclaimed_donations=unclaimed_donations,
+            claimed_donations=claimed_donations,
+            claimed_count=claimed_count,
+            unclaimed_count=unclaimed_count,
+            donor_food_data=donor_food_data
+        )
 
     
     @app.route('/ngo_profile')
