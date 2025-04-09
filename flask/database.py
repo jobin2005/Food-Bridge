@@ -96,4 +96,31 @@ def delete(sql, params=None):
                 conn.commit()
     else:
         raise NonDeleteError("The given SQL command is not a DELETE command", 400)
+    
+    
+def query_db(query, params=None):
+    with oracledb.connect(user=env["USER"], password=env["PASS"], dsn=env["DSN"],
+                          config_dir=env["FILEPATH"], wallet_location=env["FILEPATH"],
+                          wallet_password=env["WLTPASS"]) as conn:
+        with conn.cursor() as cursor:
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            columns = [col[0] for col in cursor.description]
+            rows = cursor.fetchall()
+            return [dict(zip(columns, row)) for row in rows]
+        
+def execute_query(sql, params=None):
+    with oracledb.connect(user=env["USER"], password=env["PASS"], dsn=env["DSN"],
+                          config_dir=env["FILEPATH"], wallet_location=env["FILEPATH"],
+                          wallet_password=env["WLTPASS"]) as conn:
+        with conn.cursor() as cursor:
+            if params:
+                cursor.execute(sql, params)
+            else:
+                cursor.execute(sql)
+            conn.commit()
+
+
 

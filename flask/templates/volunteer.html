@@ -1,531 +1,636 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volunteer Dashboard</title>
-    <link rel="stylesheet" href="{{url_for('static', filename='styles.css')}}">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f4;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            height: 100vh;
-        }
-        
-        .sidebar {
-            width: 250px;
-            height: 100vh;
-            background: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
-            padding: 20px;
-            position: fixed;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            border-right: 1px solid #ddd;
-            box-shadow: 2px 0px 5px rgba(0, 0, 0, 0.1);
-        }
-        .sidebar h2 {
-            font-size: 22px;
-            font-weight: bold;
-            text-align: center;
-            color: #4CAF50;
-        }
-        .menu a {
-            display: block;
-            padding: 12px;
-            text-decoration: none;
-            color: #333;
-            background: #e0e5d3;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            text-align: center;
-            font-weight: bold;
-        }
-        .menu a:hover {
-            background: #4CAF50;
-            color: #fff;
-        }
-
-        .logout {
-            position: absolute;
-            bottom: 20px;
-            width: 80%;
-            left: 10%;
-            text-align: center;
-        }
-        .main-content {
-            margin-left: 260px;
-            padding: 20px;
-            width: 100%;
-            min-height: fit-content;
-            align-content: center;
-        }
-
-        .dashboard {
-            min-height: 100%;
-            height: fit-content;
-            width: 100%;
-            align-items: start;
-        }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #e0e5d3; /* Adjusted to match previous background color */
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .stats {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-        }
-        .box {
-            background: #74c69d; /* Adjusted for a consistent theme */
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-            flex: 1;
-            margin: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .assignments {
-            margin-top: 20px;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background: #40916c; /* Consistent with the sidebar */
-            color: white;
-        }
-        button {
-            background-color: #4CAF50;
-            color: #fff;
-            padding: 14px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 18px;
-            transition: 0.3s;
-        }
-
-        button:hover {
-            background-color: #388e3c;
-        }
-
-        .profile-content {
-            flex: 1;
-            background: white;
-            max-width: 600px;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin: auto auto;
-            align-self: center;
-        }
-
-        .profile-content h4 {
-            margin-bottom: 20px;
-            margin-top: 0px;
-            font-size: 24px;
-            color: #40916c;
-        }
-
-        .profile-content p {
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        .details-list {
-            margin-top: 20px;
-            list-style: none;
-            padding: 0;
-        }
-
-        .details-list li {
-            font-size: 16px;
-            padding: 12px;
-            background: #f1f1f1;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            transition: background 0.3s;
-        }
-
-        .details-list li:hover {
-            background: #e2e6ea;
-        }
-
-        .details-list li strong {
-            color: #343a40;
-        }
-
-        .profile-update {
-            flex: 1;
-            height: fit-content;
-            max-width: 600px;
-            margin: 50px auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        .profile-update h1 {
-            text-align: center;
-            color: #4CAF50;
-        }
-        .profile-update form {
-            display: flex;
-            flex-direction: column;
-        }
-        .profile-update label {
-            margin: 10px 0 5px;
-        }
-        .profile-update input, .profile-update select {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        .radio-group, .checkbox-group {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-        }
-        .radio-group label, .checkbox-group label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-        .profile-update input[type="radio"], .profile-update input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-        }
-        .btn {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-align: center;
-        }
-        .btn:hover {
-            background-color: #45a049;
-        }
-        .error-message {
-            color: red;
-            font-size: 14px;
-            display: none;
-        }
-    </style>
-</head>
-<body>
-    <aside class="sidebar">
-        <img src="{{url_for('static', filename='logo.png')}}" alt="Food Bridge Logo" class="logo">
-        <div class="menu">
-            <a href="volunteer">Dashboard</a>
-            <a href="volunteer?section=profile">Profile</a>
-            <a href="feedback">Feedback</a>
-            <a href="support">Support</a>
-            <a href="logout">Log Out</a>
-        </div>
-    </aside>
-    <div class="main-content">
-        {% if request.args.get('section','') == '' %}
-        <main class="dashboard">
-            <header>
-                <h3>Welcome, {{ user_fn }}!</h3>
-                <p>One fingerprint doesn't fade from the life we touch...</p>
-            </header>
-            <div class="stats">
-                <div class="box">Active Pickups <br><span>2</span></div>
-                <div class="box">Cleared Pickups <br><span>2</span></div>
-                <div class="box">Pending Pickups <br><span>0</span></div>
-            </div>
-            <section class="assignments">
-                <h4>Your Assignments</h4>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Donation ID</th>
-                            <th>Pickup Location</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for assignment in assignments %}
-                            <tr>
-                                <td>{{ assignment.donation_id }}</td>
-                                <td>{{ assignment.pickup_location }}</td>
-                                <td>{{ assignment.status }}</td>
-                                <td>
-                                    {% if assignment.status == 'Pending' %}
-                                        <form method="POST" action="{{ url_for('start_pickup') }}">
-                                            <input type="hidden" name="donation_id" value="{{ assignment.donation_id }}">
-                                            <button type="submit">Start Pickup</button>
-                                        </form>
-                                    {% elif assignment.status == 'Active' %}
-                                        <button disabled>In Progress</button>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </section>
-            
-            {% if delivery_assignment %}
-            <section class="delivery-instructions">
-                <h4>Deliver To NGO</h4>
-                <p><strong>NGO Name:</strong> {{ delivery_assignment.ngo_name }}</p>
-                <p><strong>Delivery Address:</strong> {{ delivery_assignment.ngo_address }}</p>
-                <p><strong>Contact:</strong> {{ delivery_assignment.ngo_contact }}</p>
-                
-                <form method="POST" action="{{ url_for('mark_delivered') }}">
-                    <input type="hidden" name="donation_id" value="{{ delivery_assignment.donation_id }}">
-                    <button type="submit">Mark as Delivered</button>
-                </form>
-            </section>
-            {% endif %}
-        </main>
-        {% elif request.args.get('section','') == 'profile' %}
-        <main class="profile-content">
-            <h4> Volunteer Details</h4>
-            <p>View your volunteering history and profile details below.</p>
-            <ul class="details-list" id="profile-info">
-                <li><strong>Username:</strong> <span id="username"></span></li>
-                <li><strong>Name:</strong> <span id="name"></span></li>
-                <li><strong>Email:</strong> <span id="email"></span></li>
-                <li><strong>Phone:</strong> <span id="phone"></span></li>
-                <li><strong>Gender:</strong> <span id="gender"></span></li>
-                <li><strong>Age:</strong> <span id="age"></span></li>
-                <li><strong>Address:</strong> <span id="address"></span></li>
-                <li><strong>Total Deliveries Made:</strong> <span id="total_delv"></span></li>
-                <li><strong>Last Deliveries Date:</strong> <span id="last_delv"></span></li>
-            </ul>
-            <button class="update-btn" onclick="window.location.href='/volunteer?section=update'">Update Profile</button>
-        </main>
-        {% elif request.args.get('section','') == 'update' %}
-        <main class="profile-update">
-            <h1>Update Your Profile</h1>
-            <form id="update-form">
-                <label><b>First Name</b></label>
-                <input type="text" id="first_name" name="first_name" placeholder="First Name" required>
-    
-                <label><b>Last Name</b></label>
-                <input type="text" id="last_name" name="last_name" placeholder="Last Name">
-    
-                <label><b>Date of Birth</b></label>
-                <input type="date" name="dob" id="dob">
-    
-                <label><b>Gender</b></label>
-                <div class="radio-group">
-                    <label><input type="radio" name="gender" value="Male" required> Male</label>
-                    <label><input type="radio" name="gender" value="Female" required> Female</label>
-                    <label><input type="radio" name="gender" value="Others" required> Others</label>
-                </div>
-    
-                <label><b>Email</b></label>
-                <input type="email" id="email" name="email" placeholder="Email" required>
-    
-                <label><b>Mobile Number</b></label>
-                <input type="tel" id="mobile" name="mobile" placeholder="Mobile Number" required pattern="\d{10}" title="Mobile number must be 10 digits.">
-    
-                <label><b>State</b></label>
-                <input type="text" id="state" name="state" placeholder="State" required>
-    
-                <label><b>District</b></label>
-                <input type="text" id="district" name="district" placeholder="District" required>
-    
-                <label><b>Street Name</b></label>
-                <input type="text" id="street" name="street" placeholder="Street Name" required>
-    
-                <label><b>House No/Locality</b></label>
-                <input type="text" id="house" name="house" placeholder="House No./Locality" required>
-    
-                <label><b>Pincode</b></label>
-                <input type="text" id="pincode" name="pincode" placeholder="Pincode" required pattern="\d{6}" title="Pincode must be exactly 6 digits." oninput="validatePincode()">
-                <p id="pincodeError" class="error-message">Pincode must be exactly 6 digits.</p>
-    
-                <label><b>Username</b></label>
-                <input type="text" id="username" name="username" placeholder="Username" required>
-    
-                <p id="updationError" class="error-message"></p>
-    
-                <div class="checkbox-group">
-                    <label><input type="checkbox" required> Accept terms and conditions</label>
-                </div>
-    
-                <button type="submit" class="btn">Update</button>
-            </form>
-        </main>
-        {% endif %}
-    </div>
-
-    <script>
-        function validatePincode() {
-            var pincode = document.getElementById("pincode").value;
-            var pincodeError = document.getElementById("pincodeError");
-            var pincodePattern = /^\d{6}$/; 
-
-            pincodeError.style.display = pincodePattern.test(pincode) ? "none" : "block";
-        }
-    
-        async function loadProfile() {
-            console.log("loadProfile() function is running..."); // Debug log
-            try {
-                let response = await fetch("/get_profile"); // Call Flask API
-                let data = await response.json(); // Convert response to JSON
-                
-                if (data.error) {
-                    document.getElementById("profile-info").innerHTML = `<p>${data.error}</p>`;
-                    return;
-                }
-
-                let dobDate = new Date(data.dob); // Convert string to Date object
-                let today = new Date(); // Get current date
-
-                let age = today.getFullYear() - dobDate.getFullYear();
-                let monthDiff = today.getMonth() - dobDate.getMonth();
-                let dayDiff = today.getDate() - dobDate.getDate();
-
-                // If birthday hasn't occurred this year, subtract 1 from age
-                if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-                    age--;
-                }
-
-                // Display user data
-                document.getElementById("username").innerText = data.username;
-                document.getElementById("name").innerText = data.fname + " " + data.lname;
-                document.getElementById("email").innerText = data.email;
-                document.getElementById("phone").innerText = data.phone;
-                document.getElementById("gender").innerText = data.gender;
-                document.getElementById("age").innerText = age;
-                document.getElementById("address").innerText = data.house + ", " + data.street + ", " + data.district + ", " + data.state + ", " + data.pincode;
-                document.getElementById("total_delv").innerText = data.total_delv;
-                document.getElementById("last_delv").innerText = data.last_delv;
-            } catch (error) {
-                console.error("Error fetching profile:", error);
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Volunteer Dashboard</title>
+        <link rel="stylesheet" href="{{url_for('static', filename='styles.css')}}">
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: #f4f4f4;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                height: 100vh;
             }
-        }
-
-        // Load profile section if present
-        const profileSection = document.getElementById("profile-info");
-        if (profileSection) {
-            loadProfile();
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            const updateForm = document.getElementById("update-form");
-            if (updateForm) {
-                updateForm.addEventListener("submit", async function(event) {
-                    event.preventDefault(); // Prevent default form submission
             
-                    let formData = new FormData(this);
-                    let jsonData = {}; // Convert FormData to JSON
+            .sidebar {
+                width: 250px;
+                height: 100vh;
+                background: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
+                padding: 20px;
+                position: fixed;
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                border-right: 1px solid #ddd;
+                box-shadow: 2px 0px 5px rgba(0, 0, 0, 0.1);
+            }
+            .sidebar h2 {
+                font-size: 22px;
+                font-weight: bold;
+                text-align: center;
+                color: #4CAF50;
+            }
+            .menu a {
+                display: block;
+                padding: 12px;
+                text-decoration: none;
+                color: #333;
+                background: #e0e5d3;
+                border-radius: 5px;
+                margin-bottom: 10px;
+                text-align: center;
+                font-weight: bold;
+            }
+            .menu a:hover {
+                background: #4CAF50;
+                color: #fff;
+            }
+
+            .logout {
+                position: absolute;
+                bottom: 20px;
+                width: 80%;
+                left: 10%;
+                text-align: center;
+            }
+            .main-content {
+                margin-left: 260px;
+                padding: 20px;
+                width: 100%;
+                min-height: fit-content;
+                align-content: center;
+            }
+
+            .dashboard {
+                min-height: 100%;
+                height: fit-content;
+                width: 100%;
+                align-items: start;
+            }
+            header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #e0e5d3; /* Adjusted to match previous background color */
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .stats {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 20px;
+            }
+            .box {
+                background: #74c69d; /* Adjusted for a consistent theme */
+                padding: 20px;
+                border-radius: 8px;
+                text-align: center;
+                font-size: 18px;
+                font-weight: bold;
+                flex: 1;
+                margin: 10px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .assignments {
+                margin-top: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }
+            th, td {
+                padding: 15px;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
+            }
+            th {
+                background: #40916c; /* Consistent with the sidebar */
+                color: white;
+            }
+            button {
+                background-color: #4CAF50;
+                color: #fff;
+                padding: 14px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                width: 100%;
+                font-size: 18px;
+                transition: 0.3s;
+            }
+
+            button:hover {
+                background-color: #388e3c;
+            }
+
+            .profile-content {
+                flex: 1;
+                background: white;
+                max-width: 600px;
+                padding: 30px;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                margin: auto auto;
+                align-self: center;
+            }
+
+            .profile-content h4 {
+                margin-bottom: 20px;
+                margin-top: 0px;
+                font-size: 24px;
+                color: #40916c;
+            }
+
+            .profile-content p {
+                font-size: 16px;
+                color: #333;
+                margin-bottom: 20px;
+            }
+
+            .details-list {
+                margin-top: 20px;
+                list-style: none;
+                padding: 0;
+            }
+
+            .details-list li {
+                font-size: 16px;
+                padding: 12px;
+                background: #f1f1f1;
+                margin-bottom: 10px;
+                border-radius: 8px;
+                transition: background 0.3s;
+            }
+
+            .details-list li:hover {
+                background: #e2e6ea;
+            }
+
+            .details-list li strong {
+                color: #343a40;
+            }
+
+            .profile-update {
+                flex: 1;
+                height: fit-content;
+                max-width: 600px;
+                margin: 50px auto;
+                background: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            
+            .profile-update h1 {
+                text-align: center;
+                color: #4CAF50;
+            }
+            .profile-update form {
+                display: flex;
+                flex-direction: column;
+            }
+            .profile-update label {
+                margin: 10px 0 5px;
+            }
+            .profile-update input, .profile-update select {
+                width: 100%;
+                padding: 8px;
+                margin-bottom: 15px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                box-sizing: border-box;
+            }
+            .radio-group, .checkbox-group {
+                display: flex;
+                gap: 15px;
+                align-items: center;
+                flex-wrap: wrap;
+                margin-bottom: 15px;
+            }
+            .radio-group label, .checkbox-group label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+            }
+            .profile-update input[type="radio"], .profile-update input[type="checkbox"] {
+                width: 18px;
+                height: 18px;
+            }
+            .btn {
+                background-color: #4CAF50;
+                color: white;
+                padding: 10px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                text-align: center;
+            }
+            .btn:hover {
+                background-color: #45a049;
+            }
+            .error-message {
+                color: red;
+                font-size: 14px;
+                display: none;
+            }
+            .donation-overview {
+                margin: 2rem 0;
+                padding: 1rem;
+                background-color: #fff7eb;
+                border-radius: 1rem;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            }
+            
+            .donation-overview h4 {
+                margin-bottom: 1rem;
+                color: #249b6a;
+            }
+            
+            .donation-table {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .table-header,
+            .table-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr 1fr;  /* ✅ Fix here */
+                padding: 0.75rem 1rem;
+                border-radius: 0.5rem;
+            }
+            
+            .table-header {
+                background-color: #d6f5b0;
+                font-weight: bold;
+            }
+            
+            .table-row {
+                background-color: #f8f0e8;
+                transition: background 0.2s ease;
+            }
+            
+
+        </style>
+    </head>
+    <body>
+        <aside class="sidebar">
+            <img src="{{url_for('static', filename='logo.png')}}" alt="Food Bridge Logo" class="logo">
+            <div class="menu">
+                <a href="volunteer">Dashboard</a>
+                <a href="volunteer?section=profile">Profile</a>
+                <a href="feedback">Feedback</a>
+                <a href="support">Support</a>
+                <a href="logout">Log Out</a>
+            </div>
+        </aside>
+        <div class="main-content">
+            {% if request.args.get('section','') == '' %}
+            <main class="dashboard">
+                <header>
+                    <h3>Welcome, {{ user_fn }}!</h3>
+                    <p>One fingerprint doesn't fade from the life we touch...</p>
+                </header>
+                <div class="stats">
+                    <div class="box">Active Pickups <br><span>2</span></div>
+                    <div class="box">Cleared Pickups <br><span>2</span></div>
+                    <div class="box">Pending Pickups <br><span>0</span></div>
+                </div>
+                <section class="donation-overview">
+                    <h4>Donation Overview</h4>
+                    {% if records %}
+                    <div class="donation-table">
+                        <div class="table-header">
+                            <span>Donor Name</span>
+                            <span>Food Item</span>
+                            <span>NGO Name</span>
+                            <span>Action</span>
+                        </div>
+                        {% for r in records %}
+                        <div class="table-row" id="row-{{ r.assignment_id }}">
+                            <span>{{ r.donor_name }}</span>
+                            <span>{{ r.food_item }}</span>
+                            <span>{{ r.ngo_name }}</span>
+                            <span>
+                                <button class="status-btn"
+                                        data-id="{{ r.assignment_id }}"
+                                        data-stage="{{ 'deliver' if r.status == 'PICKEDUP' else 'pickup' }}">
+                                    {{ 'Delivered' if r.status == 'PICKEDUP' else 'Pickup' }}
+                                </button>
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p>No donations to display at the moment.</p>
+                    {% endif %}
+                </section>
                 
-                    formData.forEach((value, key) => {
-                        jsonData[key] = value;
-                    });
+            </main>
+            {% elif request.args.get('section','') == 'profile' %}
+            <main class="profile-content">
+                <h4> Volunteer Details</h4>
+                <p>View your volunteering history and profile details below.</p>
+                <ul class="details-list" id="profile-info">
+                    <li><strong>Username:</strong> <span id="username"></span></li>
+                    <li><strong>Name:</strong> <span id="name"></span></li>
+                    <li><strong>Email:</strong> <span id="email"></span></li>
+                    <li><strong>Phone:</strong> <span id="phone"></span></li>
+                    <li><strong>Gender:</strong> <span id="gender"></span></li>
+                    <li><strong>Age:</strong> <span id="age"></span></li>
+                    <li><strong>Address:</strong> <span id="address"></span></li>
+                    <li><strong>Total Deliveries Made:</strong> <span id="total_delv"></span></li>
+                    <li><strong>Last Deliveries Date:</strong> <span id="last_delv"></span></li>
+                </ul>
+                <button class="update-btn" onclick="window.location.href='/volunteer?section=update'">Update Profile</button>
+            </main>
+            {% elif request.args.get('section','') == 'update' %}
+            <main class="profile-update">
+                <h1>Update Your Profile</h1>
+                <form id="update-form">
+                    <label><b>First Name</b></label>
+                    <input type="text" id="first_name" name="first_name" placeholder="First Name" required>
+        
+                    <label><b>Last Name</b></label>
+                    <input type="text" id="last_name" name="last_name" placeholder="Last Name">
+        
+                    <label><b>Date of Birth</b></label>
+                    <input type="date" name="dob" id="dob">
+        
+                    <label><b>Gender</b></label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="gender" value="Male" required> Male</label>
+                        <label><input type="radio" name="gender" value="Female" required> Female</label>
+                        <label><input type="radio" name="gender" value="Others" required> Others</label>
+                    </div>
+        
+                    <label><b>Email</b></label>
+                    <input type="email" id="email" name="email" placeholder="Email" required>
+        
+                    <label><b>Mobile Number</b></label>
+                    <input type="tel" id="mobile" name="mobile" placeholder="Mobile Number" required pattern="\d{10}" title="Mobile number must be 10 digits.">
+        
+                    <label><b>State</b></label>
+                    <input type="text" id="state" name="state" placeholder="State" required>
+        
+                    <label><b>District</b></label>
+                    <input type="text" id="district" name="district" placeholder="District" required>
+        
+                    <label><b>Street Name</b></label>
+                    <input type="text" id="street" name="street" placeholder="Street Name" required>
+        
+                    <label><b>House No/Locality</b></label>
+                    <input type="text" id="house" name="house" placeholder="House No./Locality" required>
+        
+                    <label><b>Pincode</b></label>
+                    <input type="text" id="pincode" name="pincode" placeholder="Pincode" required pattern="\d{6}" title="Pincode must be exactly 6 digits." oninput="validatePincode()">
+                    <p id="pincodeError" class="error-message">Pincode must be exactly 6 digits.</p>
+        
+                    <label><b>Username</b></label>
+                    <input type="text" id="username" name="username" placeholder="Username" required>
+        
+                    <p id="updationError" class="error-message"></p>
+        
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" required> Accept terms and conditions</label>
+                    </div>
+        
+                    <button type="submit" class="btn">Update</button>
+                </form>
+            </main>
+            {% endif %}
+        </div>
+
+        <script>
             
+
+            function validatePincode() {
+                var pincode = document.getElementById("pincode").value;
+                var pincodeError = document.getElementById("pincodeError");
+                var pincodePattern = /^\d{6}$/; 
+
+                pincodeError.style.display = pincodePattern.test(pincode) ? "none" : "block";
+            }
+                document.addEventListener("DOMContentLoaded", async () => {
                     try {
-                        let response = await fetch("/update_user", {  // Correct route name
-                            method: "PUT",
-                            headers: {
-                                "Content-Type": "application/json",  // Send as JSON
-                            },
-                            body: JSON.stringify(jsonData),  // Send JSON data
+                        let response = await fetch("/assigned_donation");
+                        let data = await response.json();
+                
+                        if (data.error) {
+                            document.querySelector(".donation-overview").innerHTML = `<p>${data.error}</p>`;
+                            return;
+                        }
+                
+                        let html = `
+                            <h4>Donation Overview</h4>
+                            <div class="donation-table">
+                                <div class="table-header">
+                                    <span>Donor Name</span>
+                                    <span>Food Item</span>
+                                    <span>NGO Name</span>
+                                    <span>Action</span>
+                                </div>
+                        `;
+                
+                        data.records.forEach(r => {
+                            const stage = r.status === "PICKEDUP" ? "deliver" : "pickup";
+                            const label = stage === "deliver" ? "Delivered" : "Pickup";
+                        
+                            html += `
+                                <div class="table-row" id="row-${r.assignment_id}">
+                                    <span>${r.donor_name}</span>
+                                    <span>${r.food_item}</span>
+                                    <span>${r.ngo_name}</span>
+                                    <span>
+                                        <button class="status-btn" data-id="${r.assignment_id}" data-stage="${stage}">
+                                            ${label}
+                                        </button>
+                                    </span>
+                                </div>
+                            `;
                         });
                 
-                        let result = await response.json(); // Get the JSON response
+                        html += `</div>`;
+                        document.querySelector(".donation-overview").innerHTML = html;
                 
-                        if (result.success) {
-                            alert("Update successful!");
-                            setTimeout(() => {
-                                window.location.href = "/volunteer?section=profile"; // Redirect after success
-                            }, 1500);
-                        } else {
-                            document.getElementById("updationError").innerText = result.error;
-                            document.getElementById("updationError").style.display = "block";
-                        }
+                        // Attach event listeners to buttons
+
+                        document.querySelectorAll('.status-btn').forEach(btn => {
+                            btn.addEventListener('click', async () => {
+                                const assignmentId = btn.getAttribute('data-id');
+                                const currentStage = btn.getAttribute('data-stage');
+
+                                if (currentStage === 'pickup') {
+                                    // Don't update server yet — just change button
+                                    btn.textContent = 'Delivered';
+                                    btn.setAttribute('data-stage', 'deliver');
+                                } else if (currentStage === 'deliver') {
+                                    const response = await fetch('/update_assignment_status', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({
+                                            assignment_id: assignmentId,
+                                            status: 'COMPLETED'
+                                        })
+                                    });
+
+                                    const result = await response.json();
+                                    if (result.success) {
+                                        document.getElementById(`row-${assignmentId}`).remove();
+                                    } else {
+                                        alert('Failed to mark as delivered. Try again.');
+                                    }
+                                }
+                            });
+                        });
+
                     } catch (error) {
-                        console.error("Error updating profile:", error);
-                        document.getElementById("updationError").innerText = "An error occurred. Please try again.";
-                        document.getElementById("updationError").style.display = "block";
+                        console.error("Error fetching assigned donations:", error);
+                        document.querySelector(".donation-overview").innerHTML = `<p>Failed to load donations.</p>`;
                     }
                 });
-            }
+                
 
-            async function loadProfileUpdate() {
-                console.log("loadProfileUpdate() function is running...");
+            async function loadProfile() {
+                console.log("loadProfile() function is running..."); // Debug log
                 try {
-                    let response = await fetch("/get_profile");
-                    let data = await response.json();
-
+                    let response = await fetch("/get_profile"); // Call Flask API
+                    let data = await response.json(); // Convert response to JSON
+                    
                     if (data.error) {
-                        document.getElementById("profileError").innerText = data.error;
+                        document.getElementById("profile-info").innerHTML = `<p>${data.error}</p>`;
                         return;
                     }
 
-                    // Prefill text inputs
-                    document.getElementById("first_name").value = data.fname;
-                    document.getElementById("last_name").value = data.lname;
-                    document.getElementById("email").value = data.email;
-                    document.getElementById("mobile").value = data.phone;
-                    document.getElementById("state").value = data.state;
-                    document.getElementById("district").value = data.district;
-                    document.getElementById("street").value = data.street;
-                    document.getElementById("house").value = data.house;
-                    document.getElementById("pincode").value = data.pincode;
-                    document.getElementById("username").value = data.username;
-                    document.getElementById("dob").value = data.dob;
+                    let dobDate = new Date(data.dob); // Convert string to Date object
+                    let today = new Date(); // Get current date
 
-                    // Prefill gender (radio button)
-                    let genderOptions = document.getElementsByName("gender");
-                    genderOptions.forEach(radio => {
-                        if (radio.value.toLowerCase().trim() === data.gender.toLowerCase().trim()) {
-                            radio.checked = true;
-                        }
-                    });
+                    let age = today.getFullYear() - dobDate.getFullYear();
+                    let monthDiff = today.getMonth() - dobDate.getMonth();
+                    let dayDiff = today.getDate() - dobDate.getDate();
 
+                    // If birthday hasn't occurred this year, subtract 1 from age
+                    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                        age--;
+                    }
+
+                    // Display user data
+                    document.getElementById("username").innerText = data.username;
+                    document.getElementById("name").innerText = data.fname + " " + data.lname;
+                    document.getElementById("email").innerText = data.email;
+                    document.getElementById("phone").innerText = data.phone;
+                    document.getElementById("gender").innerText = data.gender;
+                    document.getElementById("age").innerText = age;
+                    document.getElementById("address").innerText = data.house + ", " + data.street + ", " + data.district + ", " + data.state + ", " + data.pincode;
+                    document.getElementById("total_delv").innerText = data.total_delv;
+                    document.getElementById("last_delv").innerText = data.last_delv;
                 } catch (error) {
                     console.error("Error fetching profile:", error);
                 }
             }
 
-            // Check if current section is 'update' in the URL
-            const updateSection = document.getElementById("update-form");
-            if (updateSection) {
-                loadProfileUpdate();
+            // Load profile section if present
+            const profileSection = document.getElementById("profile-info");
+            if (profileSection) {
+                loadProfile();
             }
-        });
-    </script>
-</body>
-</html>
+
+            document.addEventListener("DOMContentLoaded", () => {
+                const updateForm = document.getElementById("update-form");
+                if (updateForm) {
+                    updateForm.addEventListener("submit", async function(event) {
+                        event.preventDefault(); // Prevent default form submission
+                
+                        let formData = new FormData(this);
+                        let jsonData = {}; // Convert FormData to JSON
+                    
+                        formData.forEach((value, key) => {
+                            jsonData[key] = value;
+                        });
+                
+                        try {
+                            let response = await fetch("/update_user", {  // Correct route name
+                                method: "PUT",
+                                headers: {
+                                    "Content-Type": "application/json",  // Send as JSON
+                                },
+                                body: JSON.stringify(jsonData),  // Send JSON data
+                            });
+                    
+                            let result = await response.json(); // Get the JSON response
+                    
+                            if (result.success) {
+                                alert("Update successful!");
+                                setTimeout(() => {
+                                    window.location.href = "/volunteer?section=profile"; // Redirect after success
+                                }, 1500);
+                            } else {
+                                document.getElementById("updationError").innerText = result.error;
+                                document.getElementById("updationError").style.display = "block";
+                            }
+                        } catch (error) {
+                            console.error("Error updating profile:", error);
+                            document.getElementById("updationError").innerText = "An error occurred. Please try again.";
+                            document.getElementById("updationError").style.display = "block";
+                        }
+                    });
+                }
+
+                async function loadProfileUpdate() {
+                    console.log("loadProfileUpdate() function is running...");
+                    try {
+                        let response = await fetch("/get_profile");
+                        let data = await response.json();
+
+                        if (data.error) {
+                            document.getElementById("profileError").innerText = data.error;
+                            return;
+                        }
+
+                        // Prefill text inputs
+                        document.getElementById("first_name").value = data.fname;
+                        document.getElementById("last_name").value = data.lname;
+                        document.getElementById("email").value = data.email;
+                        document.getElementById("mobile").value = data.phone;
+                        document.getElementById("state").value = data.state;
+                        document.getElementById("district").value = data.district;
+                        document.getElementById("street").value = data.street;
+                        document.getElementById("house").value = data.house;
+                        document.getElementById("pincode").value = data.pincode;
+                        document.getElementById("username").value = data.username;
+                        document.getElementById("dob").value = data.dob;
+
+                        // Prefill gender (radio button)
+                        let genderOptions = document.getElementsByName("gender");
+                        genderOptions.forEach(radio => {
+                            if (radio.value.toLowerCase().trim() === data.gender.toLowerCase().trim()) {
+                                radio.checked = true;
+                            }
+                        });
+
+                    } catch (error) {
+                        console.error("Error fetching profile:", error);
+                    }
+                }
+
+                // Check if current section is 'update' in the URL
+                const updateSection = document.getElementById("update-form");
+                if (updateSection) {
+                    loadProfileUpdate();
+                }
+            });
+        </script>
+    </body>
+    </html>

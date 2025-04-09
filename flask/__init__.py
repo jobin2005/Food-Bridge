@@ -113,7 +113,19 @@ def create_app():
                 return jsonify({"success": False, "error": "Username already exists. Choose another."})
             
             #Creating a new id for a new user
-            new_id = query("SELECT NVL(MAX(ID), 0) + 1 FROM LOGIN")[0][0]  #Incrementing Code
+            new_id = query("""
+                SELECT MAX(val) FROM (
+                    SELECT NVL(MAX(ID), 0) as val FROM LOGIN
+                    UNION
+                    SELECT NVL(MAX(ID), 0) FROM ALLUSERS
+                    UNION
+                    SELECT NVL(MAX(ID), 0) FROM DONOR
+                    UNION
+                    SELECT NVL(MAX(ID), 0) FROM VOLUNTEER
+                    UNION
+                    SELECT NVL(MAX(ID), 0) FROM NGO
+                )
+            """)[0][0] + 1 #Incrementing Code
 
             #Insert new user with ID(TO Table LOGIN)
             insert("INSERT INTO LOGIN (ID, USERNAME, PASSWORD) VALUES (:1, :2, :3)", (new_id, username, password))
@@ -145,8 +157,8 @@ def create_app():
                 pincode = request.form.get('pincode')
                 insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
             elif role == "ngo":
-                insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE, REGISTRATION_ID) VALUES (:1, :2, :3, :4, :5, :6, :7)",
-                (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id))
+                insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE, REGISTRATION_ID, VERIFICATION_STATUS) VALUES (:1, :2, :3, :4, :5, :6, :7, :9)",
+                (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id, 0))
             else:
                 return jsonify({"success": False, "error": "Invalid role"})
 
@@ -205,7 +217,7 @@ def create_app():
                 food_id = 101 if not y or not y[0][0] else y[0][0] + 1
 
                 # Insert into FOOD table (Using parameterized query)
-                insert("INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE) VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'))", (food_id, item_name, item_category, quantity, 'ONHOLD', shelf_life))
+                insert("INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE) VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'))", (food_id, item_name, item_category, quantity, 'PENDING', shelf_life))
 
                 insert("INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE) VALUES (:1, :2, :3, 'PENDING', TO_DATE(:4, 'YYYY-MM-DD'))", (dono_id, food_id, current_user.id, donation_date_obj))
 
@@ -363,6 +375,96 @@ def create_app():
     def ngo_profile():
         return render_template("ngo_profile.html")
     
+    @app.route('/assigned_donation')
+    @login_required
+    def volunteer_dashboard():
+        volunteer_id = session.get("user_id")
+
+        records = query("""
+            SELECT a.ASSIGNMENT_ID, d.DONATIONID, fi.FOODNAME AS food_item, 
+                do.FN || ' ' || do.LN AS donor_name,
+                n.NGONAME AS ngo_name,
+                a.STATUS
+            FROM DONATION d
+            JOIN FOOD fi ON d.FOODID = fi.FOODID
+            JOIN DONOR do ON d.DONORID = do.ID
+            JOIN DONATION_ASSIGNMENT a ON d.DONATIONID = a.DONATION_ID
+            JOIN NGO n ON a.NGO_ID = n.ID
+            WHERE a.VOLUNTEER_ID = :1
+            AND a.STATUS = 'ACTIVE'
+        """, (volunteer_id,))
+
+        # Convert result to a list of dicts
+        formatted = []
+        for r in records:
+            formatted.append({
+                "assignment_id": r[0],      # Add this
+                "donation_id": r[1],
+                "food_item": r[2],
+                "donor_name": r[3],
+                "ngo_name": r[4],
+                "status": r[5]              # Add this too for JS
+            })
+
+        return jsonify({"records": formatted})
+
+
+    @app.route('/update_assignment_status', methods=['POST'])
+    @login_required
+    def update_assignment_status():
+        try:
+            data = request.get_json()
+            new_status = data.get('status')
+            
+            # Convert assignment_id to integer
+            try:
+                assignment_id = int(data.get('assignment_id'))
+            except (ValueError, TypeError):
+                return jsonify({'success': False, 'error': 'Invalid assignment ID'}), 400
+
+            if not new_status:
+                return jsonify({'success': False, 'error': 'Missing status'}), 400
+
+            # Update the DONATION_ASSIGNMENT table
+            update("""
+                UPDATE DONATION_ASSIGNMENT
+                SET STATUS = :1
+                WHERE ASSIGNMENT_ID = :2
+            """, (new_status, assignment_id))
+
+            # Update the DONATIONS table
+            update("""
+                UPDATE DONATION
+                SET STATUS = :1
+                WHERE DONATIONID = (
+                    SELECT DONATION_ID FROM DONATION_ASSIGNMENT WHERE ASSIGNMENT_ID = :2
+                )
+            """, (new_status, assignment_id))
+            
+            volunteer_id = session.get("user_id")
+            update("""
+                UPDATE VOLUNTEER
+                SET AVAILABLE = :1
+                WHERE ID = :2
+            """, (1, volunteer_id))
+            
+
+            return jsonify({'success': True})
+
+        except Exception as e:
+            print(f"Error updating assignment status: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+    @app.route('/deliver/<int:assignment_id>/<int:donation_id>', methods=['POST'])
+    @login_required
+    def deliver_donation(assignment_id, donation_id):
+        execute_query("UPDATE DONATION_ASSIGNMENT SET STATUS = 'COMPLETED' WHERE ASSIGNMENT_ID = :id", {'id': assignment_id})
+        execute_query("UPDATE DONATION SET STATUS = 'ASSIGNED COMPLETED' WHERE DONATIONID = :did", {'did': donation_id})
+        execute_query("UPDATE VOLUNTEER SET AVAILABLE = 1 WHERE ID = :vid", {'vid': session['user_id']})
+        return redirect(url_for('volunteer_dashboard'))
+
     @app.route('/volunteer')
     @login_required
     @role_required('volunteer')
