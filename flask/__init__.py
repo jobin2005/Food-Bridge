@@ -143,38 +143,80 @@ def create_app():
             Phone = request.form.get('mobile')
             Email = request.form.get('email')
 
-            # Generate Address ID
-            Add_id = query("SELECT NVL(MAX(ADDRESSID), 100) FROM ADDRESS")[0][0] + 1
+
             
             ngo_name = request.form.get('ngo_name')
             reg_id = request.form.get('reg_id')
             owner_name = request.form.get('owner')   
-            
-            # Insert user details
-            if role == "donor":
-                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))      
-            elif role == "volunteer":
-                pincode = request.form.get('pincode')
-                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)", (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
-            elif role == "ngo":
-                insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE, REGISTRATION_ID, VERIFICATION_STATUS) VALUES (:1, :2, :3, :4, :5, :6, :7, :9)",
-                (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id, 0))
-            else:
-                return jsonify({"success": False, "error": "Invalid role"})
+
 
             # Insert address
             state = request.form.get('state')
             district = request.form.get('district')
             street = request.form.get('street')
-            house = request.form.get('house')
+            house = request.form.get('house') if role != 'ngo' else None
             pincode = request.form.get('pincode')
 
+            # Check if the address already exists
             if role == 'ngo':
-                insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET,PINCODE) VALUES (:1, :2, :3, :4, :5)",
-                (Add_id, state, district, street,pincode))               
+                existing_address = query("SELECT ADDRESSID FROM ADDRESS WHERE STATE = :1 AND DISTRICT = :2 AND STREET = :3 AND PINCODE = :4 AND HOUSE IS NULL",
+        (state, district, street, pincode))
+            else:
+                existing_address = query("SELECT ADDRESSID FROM ADDRESS WHERE STATE = :1 AND DISTRICT = :2 AND STREET = :3 AND HOUSE = :4 AND PINCODE = :5",
+        (state, district, street, house, pincode))
+
+            if existing_address:
+                Add_id = existing_address[0][0]
+                if role == "donor":
+                    insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)",
+                        (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
+                    insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
+                    return jsonify({"success": True})
+                
+                elif role == "volunteer":
+                    pincode = request.form.get('pincode')
+                    print(new_id)
+                    insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
+                        (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+                    insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
+                    return jsonify({"success": True})
+
+                elif role == "ngo":
+                    insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE,REGISTRATION_ID) VALUES (:1, :2, :3, :4, :5, :6, :7)",
+                    (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id))
+                    insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
+                    return jsonify({"success": True})
+                
+            else:
+                     # Generate new address ID
+                Add_id = query("SELECT NVL(MAX(ADDRESSID), 0) + 1 FROM ADDRESS")[0][0]
+                
+    
+            if role == 'ngo':
+                insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, PINCODE) VALUES (:1, :2, :3, :4, :5)",
+               (Add_id, state, district, street, pincode))
             else:
                 insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",
-                (Add_id, state, district, street, house, pincode))
+               (Add_id, state, district, street, house, pincode))
+                
+                 # Insert user details
+            if role == "donor":
+                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)",
+                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
+                insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
+            elif role == "volunteer":
+                pincode = request.form.get('pincode')
+                print(new_id)
+                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
+                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+                insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
+
+            elif role == "ngo":
+                insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE,REGISTRATION_ID) VALUES (:1, :2, :3, :4, :5, :6, :7)",
+                (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id))
+                insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
+            else:
+                return jsonify({"success": False, "error": "Invalid role"}) 
                 
             return jsonify({"success": True})
           
@@ -606,16 +648,7 @@ def create_app():
         except Exception as e:
             print(f"Error updating assignment status: {e}")
             return jsonify({'success': False, 'error': str(e)}), 500
-
-
-
-    @app.route('/deliver/<int:assignment_id>/<int:donation_id>', methods=['POST'])
-    @login_required
-    def deliver_donation(assignment_id, donation_id):
-        execute_query("UPDATE DONATION_ASSIGNMENT SET STATUS = 'COMPLETED' WHERE ASSIGNMENT_ID = :id", {'id': assignment_id})
-        execute_query("UPDATE DONATION SET STATUS = 'ASSIGNED COMPLETED' WHERE DONATIONID = :did", {'did': donation_id})
-        execute_query("UPDATE VOLUNTEER SET AVAILABLE = 1 WHERE ID = :vid", {'vid': session['user_id']})
-        return redirect(url_for('volunteer_dashboard'))
+        
 
     @app.route('/volunteer')
     @login_required
