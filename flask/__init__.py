@@ -477,7 +477,7 @@ def create_app():
             {'donation_id': donation_id, 'ngo_id': ngo_id}
         )
 
-        return redirect(url_for('ngo_dashboard'))
+        return redirect(url_for('ngo'))
     
     @app.route('/ngo')
     def ngo():
