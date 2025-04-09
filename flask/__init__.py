@@ -147,8 +147,7 @@ def create_app():
             Phone = request.form.get('mobile')
             Email = request.form.get('email')
 
-            
-                # Generate Address ID
+            # Generate Address ID
             Add_id = query("SELECT NVL(MAX(ADDRESSID), 100) FROM ADDRESS")[0][0] + 1
 
             ngo_name = request.form.get('ngo_name')
@@ -162,7 +161,7 @@ def create_app():
             elif role == "volunteer":
                 pincode = request.form.get('pincode')
                 insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
-                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 1))
             elif role == "ngo":
                  insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE,REGISTRATION_ID) VALUES (:1, :2, :3, :4, :5, :6, :7)",
                  (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id))
@@ -202,7 +201,8 @@ def create_app():
     @role_required('donor')
     def donor():
         current_date = datetime.now().strftime("%Y-%m-%d")
-        user_fn = query("SELECT FN FROM DONOR WHERE ID = :ID",{"ID":current_user.id})[0][0]
+        user_fn = query("SELECT FN FROM DONOR WHERE ID = :ID", {"ID": current_user.id})[0][0]
+
         if request.method == "POST":
             try:
                 item_name = request.form.get('itemName')
@@ -211,9 +211,14 @@ def create_app():
                 donation_date = request.form.get('donationDate')
                 shelf_life_days = int(request.form.get('shelfLife'))
 
-                # Calculate shelf life (convert to proper date format)
+                # Convert donation date to date object
                 donation_date_obj = datetime.strptime(donation_date, '%Y-%m-%d')
-                shelf_life = (donation_date_obj + timedelta(days=shelf_life_days)).strftime('%Y-%m-%d')
+
+                # Format donation date as DD-MM-YYYY
+                formatted_donation_date = donation_date_obj.strftime('%d-%m-%Y')
+
+                # Calculate shelf life date and format as DD-MM-YYYY
+                shelf_life_date = (donation_date_obj + timedelta(days=shelf_life_days)).strftime('%d-%m-%Y')
 
                 # Generate new DONATIONID
                 x = query("SELECT DONATIONID FROM DONATION ORDER BY DONATIONID DESC")
@@ -223,10 +228,13 @@ def create_app():
                 y = query("SELECT FOODID FROM FOOD ORDER BY FOODID DESC")
                 food_id = 101 if not y or not y[0][0] else y[0][0] + 1
 
-                # Insert into FOOD table (Using parameterized query)
-                insert("INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE) VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'))", (food_id, item_name, item_category, quantity, 'ONHOLD', shelf_life))
+                # Insert into FOOD table
+                insert("INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE) VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'DD-MM-YYYY'))",
+                    (food_id, item_name, item_category, quantity, 'ONHOLD', shelf_life_date))
 
-                insert("INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE) VALUES (:1, :2, :3, 'PENDING', TO_DATE(:4, 'YYYY-MM-DD'))", (dono_id, food_id, current_user.id, donation_date_obj))
+                # Insert into DONATION table
+                insert("INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE) VALUES (:1, :2, :3, 'PENDING', TO_DATE(:4, 'DD-MM-YYYY'))",
+                    (dono_id, food_id, current_user.id, formatted_donation_date))
 
                 return jsonify({"success": True, "message": "Donation successful!"})
 
@@ -418,9 +426,53 @@ def create_app():
     @login_required
     @role_required('admin')
     def admin():
-        unverified_ngos = query("SELECT * FROM NGO WHERE VERIFICATION_STATUS = 0 ORDER BY ID")
-        pending_donos = query("SELECT D.DONATIONID, D.FOODID, D.DONORID, D.STATUS, TO_CHAR(D.DONATIONDATE, 'Month DD, YYYY'), D.NGO_ID, R.FN, R.LN, R.PHONE, A.STATE, A.DISTRICT, A.STREET, A.HOUSE, A.PINCODE, F.FOODNAME, F.QUANTITY, TO_CHAR(F.SHELFLIFE, 'DD/MM/YYYY') FROM DONATION D JOIN DONOR R ON D.DONORID = R.ID JOIN ADDRESS A ON R.ADDRESSID = A.ADDRESSID JOIN FOOD F ON D.FOODID = F.FOODID WHERE D.STATUS = 'PENDING' ORDER BY D.DONATIONID")
-        return render_template("admin.html",unverified_ngos=unverified_ngos, pending_donos=pending_donos)
+        unverified_ngos = query("SELECT ID, NGONAME, OWNERNAME, EMAIL, PHONE, REGISTRATION_ID, STATE, DISTRICT, STREET, HOUSE, PINCODE FROM NGO, ADDRESS WHERE VERIFICATION_STATUS = 0 AND NGO.ADDRESSID = ADDRESS.ADDRESSID ORDER BY ID")
+        unverified_vols = query("SELECT ID, FN, LN, GENDER, DOB, EMAIL, PHONE, SERVICEAREA, STATE, DISTRICT, STREET, HOUSE, PINCODE FROM VOLUNTEER, ADDRESS WHERE VERIFICATION_STATUS = 0 AND VOLUNTEER.ADDRESSID = ADDRESS.ADDRESSID ORDER BY ID")
+
+        pending_donos = query("SELECT D.DONATIONID, D.FOODID, D.DONORID, D.STATUS, TO_CHAR(D.DONATIONDATE, 'Month DD, YYYY'), D.NGO_ID, R.FN, R.LN, R.PHONE, A.STATE, A.DISTRICT, A.STREET, A.HOUSE, A.PINCODE, F.FOODNAME, F.QUANTITY, TO_CHAR(F.SHELFLIFE, 'DD/MM/YYYY') FROM DONATION D JOIN DONOR R ON D.DONORID = R.ID JOIN ADDRESS A ON R.ADDRESSID = A.ADDRESSID JOIN FOOD F ON D.FOODID = F.FOODID ORDER BY D.DONATIONID")
+
+        avail_vols = query("SELECT * FROM VOLUNTEER WHERE VERIFICATION_STATUS = 1 AND AVAILABLE = 1")
+
+        assigned_vols = query("SELECT * FROM VOLUNTEER, DONATION_ASSIGNMENT WHERE VERIFICATION_STATUS = 1 AND AVAILABLE = 0 AND ID = VOLUNTEER_ID")
+        return render_template("admin.html",unverified_ngos=unverified_ngos, pending_donos=pending_donos, unverified_vols=unverified_vols,avail_vols=avail_vols,assigned_vols=assigned_vols)
+
+    @app.route('/verify', methods=['POST'])
+    def verify():
+        data = request.get_json()
+        id = data.get('id')
+        role = str(data.get('role')).upper()
+
+        # Validate the role to avoid SQL injection
+        if role not in ["NGO", "VOLUNTEER", "DONOR"]:
+            return jsonify({"error": "Invalid role"}), 400
+
+        update(f"UPDATE {role} SET VERIFICATION_STATUS = 1 WHERE ID = :1", (id,))
+
+        return jsonify({"message": "User Verified"}), 200
+    
+    @app.route('/assign', methods=['POST'])
+    def assign():
+        data = request.get_json()
+        vol_id = data.get('vol_id')
+        dono_id = data.get('dono_id')
+
+        assign_id = query("SELECT NVL(MAX(ASSIGNMENT_ID), 100) + 1 FROM DONATION_ASSIGNMENT")[0][0]
+
+        update("UPDATE VOLUNTEER SET AVAILABLE = 0 WHERE ID = :1", (vol_id,))
+        insert("INSERT INTO DONATION_ASSIGNMENT (ASSIGNMENT_ID, DONATION_ID, VOLUNTEER_ID, NGO_ID, STATUS) VALUES(:1, :2, :3, 29, 'ACTIVE')", (assign_id,dono_id,vol_id))
+
+        return jsonify({"message": "Volunteer Assigned"}), 200
+    
+    @app.route('/unassign', methods=['POST'])
+    def unassign():
+        data = request.get_json()
+        vol_id = data.get('vol_id')
+        dono_id = data.get('dono_id')
+
+        update("UPDATE VOLUNTEER SET AVAILABLE = 1 WHERE ID = :1", (vol_id,))
+        delete("DELETE FROM DONATION_ASSIGNMENT WHERE DONATION_ID = :1 AND VOLUNTEER_ID = :2", (dono_id,vol_id))
+
+        return jsonify({"message": "Volunteer Unassigned"}), 200
 
     return app
 
