@@ -1,176 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard - FoodBridge</title>
-  <link rel="stylesheet" href="{{url_for('static', filename='styles.css')}}">
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f8f0e8;
-      display: flex;
-    }
-    .sidebar {
-      width: 260px;
-      background: #fff;
-      height: 100vh;
-      padding: 20px;
-      border-right: 1px solid #ccc;
-    }
-    .sidebar h2 {
-      color: #249b6a;
-      text-align: center;
-    }
-    .sidebar a {
-      display: block;
-      margin: 15px 0;
-      padding: 10px;
-      text-decoration: none;
-      background: #d6f5b0;
-      border-radius: 8px;
-      color: #333;
-      transition: background 0.3s;
-    }
-    .sidebar a:hover {
-      background: #249b6a;
-      color: white;
-    }
-    .main-content {
-      flex-grow: 1;
-      padding: 30px;
-    }
-    header {
-      background: #fff7eb;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    header h2 {
-      margin: 0;
-      color: #249b6a;
-    }
-    .section {
-      margin-top: 30px;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    .section h3 {
-      color: #33a374;
-      margin-bottom: 15px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #eee;
-      text-align: left;
-    }
-    th {
-      background-color: #d6f5b0;
-      color: #333;
-    }
-    select, button {
-      padding: 8px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background: #33a374;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #249b6a;
-    }
-  </style>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Admin | FoodBridge</title>
+	<link rel="stylesheet" href="{{url_for('static', filename='styles.css')}}">
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			background: #f4f4f4;
+			margin: 0;
+			padding: 0;
+			display: flex;
+			height: 100vh;
+		}
+
+		.sidebar {
+			width: 250px;
+			height: 100vh;
+			background: rgba(255, 255, 255, 0.9);
+			/* Slightly transparent white */
+			padding: 20px;
+			position: fixed;
+			display: flex;
+			flex-direction: column;
+			gap: 20px;
+			border-right: 1px solid #ddd;
+			box-shadow: 2px 0px 5px rgba(0, 0, 0, 0.1);
+		}
+
+		.sidebar h2 {
+			font-size: 22px;
+			font-weight: bold;
+			text-align: center;
+			color: #4CAF50;
+		}
+
+		.menu a {
+			display: block;
+			padding: 12px;
+			text-decoration: none;
+			color: #333;
+			background: #e0e5d3;
+			border-radius: 5px;
+			margin-bottom: 10px;
+			text-align: center;
+			font-weight: bold;
+		}
+
+		.menu a:hover {
+			background: #4CAF50;
+			color: #fff;
+		}
+
+		.main-content {
+			margin-left: 260px;
+			padding: 20px;
+			width: 100%;
+			min-height: fit-content;
+			align-content: center;
+		}
+
+		.dashboard {
+            min-height: 100%;
+            height: fit-content;
+            width: 100%;
+            align-items: start;
+        }
+
+		header {
+			background: #fff7eb;
+			padding: 20px;
+			border-radius: 10px;
+			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+		}
+
+		header h2 {
+			margin: 0;
+			color: #249b6a;
+		}
+
+		.section {
+			margin-top: 30px;
+			background: white;
+			padding: 20px;
+			border-radius: 10px;
+			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+		}
+
+		.section h3 {
+			color: #33a374;
+			margin-bottom: 15px;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+		}
+
+		th,
+		td {
+			padding: 10px;
+			border-bottom: 1px solid #eee;
+			text-align: left;
+		}
+
+		th {
+			background-color: #d6f5b0;
+			color: #333;
+		}
+
+		select,
+		button {
+			padding: 8px;
+			border-radius: 5px;
+			border: 1px solid #ccc;
+		}
+
+		button {
+			background: #33a374;
+			color: white;
+			border: none;
+			cursor: pointer;
+		}
+
+		button:hover {
+			background: #249b6a;
+		}
+	</style>
 </head>
 <body>
-  <div class="sidebar">
-    <h2>FoodBridge</h2>
-    <a href="#">Dashboard</a>
-    <a href="#verify">Verify Users</a>
-    <a href="#assign">Assign Volunteers</a>
-    <a href="/">Logout</a>
-  </div>
-  <div class="main-content">
-    <header>
-      <h2>Welcome, Admin</h2>
-      <p>Manage donations, users, and deliveries</p>
-    </header>
+	<aside class="sidebar">
+		<img src="{{url_for('static', filename='logo.png')}}" alt="Food Bridge Logo" class="logo">
+		<div class="menu">
+			<a href="admin">Dashboard</a>
+			<a href="admin?section=verify">Verify NGOs</a>
+			<a href="admin?section=assign">Assign Volunteers</a>
+			<a href="logout">Log Out</a>
+		</div>
+	</aside>
+	<div class="main-content">
+		{% if request.args.get('section','') == '' and request.args.get('verify','') == '' and request.args.get('assign','') == '' %}
+		<main class="dashboard">
+			<header>
+				<h2>Welcome, {{ current_user.username }}</h2>
+				<p>Manage donations, users, and deliveries</p>
+			</header>
 
-    <div class="section" id="verify">
-      <h3>Verify Users</h3>
-      <table>
-        <tr>
-          <th>User ID</th>
-          <th>Name</th>
-          <th>Role</th>
-          <th>Document</th>
-          <th>Action</th>
-        </tr>
-        {% for user in unverified_users %}
-        <tr>
-          <td>{{ user.id }}</td>
-          <td>{{ user.name }}</td>
-          <td>{{ user.role }}</td>
-          <td><a href="{{ user.document_url }}" target="_blank">View</a></td>
-          <td><button onclick="verifyUser('{{ user.id }}')">Verify</button></td>
-        </tr>
-        {% endfor %}
-      </table>
-    </div>
+			<div class="section" id="verify">
+				<h3>Verify NGOs</h3>
+				<table>
+					<tr>
+						<th>User ID</th>
+						<th>Name</th>
+						<th>Email</th>
+						<th>Phone</th>
+						<th>Verify</th>
+					</tr>
+					{% for ngo in unverified_ngos[:3] %}
+					<tr>
+						<td>{{ ngo[0] }}</td>
+						<td>{{ ngo[1] }}</td>
+						<td>{{ ngo[4] }}</td>
+						<td>{{ ngo[5] }}</td>
+						<td><button onclick="location.href='/admin?verify={{ ngo[0] }}'">View</button></td>
+					</tr>
+					{% endfor %}
+					{% if unverified_ngos|length > 3 %}
+					<tr>
+						{% for i in range(5) %}
+						<td>...</td>
+						{% endfor %}
+					</tr>
+					{% endif %}
+				</table>
+			</div>
 
-    <div class="section" id="assign">
-      <h3>Assign Volunteers to Donations</h3>
-      <table>
-        <tr>
-          <th>Donation ID</th>
-          <th>Donor Name</th>
-          <th>Nearby Volunteers</th>
-          <th>Assign</th>
-        </tr>
-        {% for donation in donations %}
-        <tr>
-          <td>{{ donation.id }}</td>
-          <td>{{ donation.donor_name }}</td>
-          <td>
-            <select id="volunteer_{{ donation.id }}">
-              {% for volunteer in volunteers_for_donation[donation.id] %}
-              <option value="{{ volunteer.id }}">{{ volunteer.name }}</option>
-              {% endfor %}
-            </select>
-          </td>
-          <td><button onclick="assignVolunteer('{{ donation.id }}')">Assign</button></td>
-        </tr>
-        {% endfor %}
-      </table>
-    </div>
-  </div>
+			<div class="section" id="assign">
+				<h3>Assign Volunteers to Donations</h3>
+				<table>
+					<tr>
+						<th>Donation ID</th>
+						<th>Donation Date</th>
+						<th>Donation Location</th>
+						<th>Assign</th>
+					</tr>
+					{% for dono in pending_donos[:3] %}
+					<tr>
+						<td>{{ dono[0] }}</td>
+						<td>{{ dono[4] }}</td>
+						<td>{{ dono[12] + ', ' + dono[11] + ', ' + dono[10] + ', ' + dono[9] + ', ' + dono[13] }}</td>
+						<td><button onclick="location.href='/admin?assign={{ dono[0] }}'">Assign</button></td>
+					</tr>
+					{% endfor %}
+					{% if pending_donos|length > 3 %}
+					<tr>
+						{% for i in range(4) %}
+						<td>...</td>
+						{% endfor %}
+					</tr>
+					{% endif %}
+				</table>
+			</div>
+		</main>
+		{% if request.args.get('verify','') %}
+		<main class="ngo-verify">
+			
+		</main>
+		{% endif %}
+	</div>
 
-  <script>
-    function verifyUser(userId) {
-      fetch('/verify_user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId })
-      }).then(res => res.json()).then(data => alert(data.message));
-    }
+	<script>
+		function verifyUser(userId) {
+			fetch('/verify_user', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ user_id: userId })
+			}).then(res => res.json()).then(data => alert(data.message));
+		}
 
-    function assignVolunteer(donationId) {
-      const volunteerId = document.getElementById('volunteer_' + donationId).value;
-      fetch('/assign_volunteer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ donation_id: donationId, volunteer_id: volunteerId })
-      }).then(res => res.json()).then(data => alert(data.message));
-    }
-  </script>
+		function assignVolunteer(donationId) {
+			const volunteerId = document.getElementById('volunteer_' + donationId).value;
+			fetch('/assign_volunteer', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ donation_id: donationId, volunteer_id: volunteerId })
+			}).then(res => res.json()).then(data => alert(data.message));
+		}
+	</script>
 </body>
+
 </html>
