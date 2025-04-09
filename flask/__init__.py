@@ -220,7 +220,7 @@ def create_app():
                 insert("INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE) VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'))", (food_id, item_name, item_category, quantity, 'PENDING', shelf_life))
 
                 insert("INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE) VALUES (:1, :2, :3, 'PENDING', TO_DATE(:4, 'YYYY-MM-DD'))", (dono_id, food_id, current_user.id, donation_date_obj))
-
+                
                 return jsonify({"success": True, "message": "Donation successful!"})
 
             except Exception as e:
@@ -246,14 +246,30 @@ def create_app():
                 profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB, ADDRESSID FROM DONOR WHERE ID = :1", (user_id,))
             elif user_role == "volunteer":
                 profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB, ADDRESSID FROM VOLUNTEER WHERE ID = :1", (user_id,))
+            elif user_role == "ngo":
+                profile_data=query("select NGONAME,EMAIL,PHONE,ADDRESSID from NGO WHERE ID = :1", (user_id,))
             else:
                 return jsonify({"error": "Invalid user role"}), 400
 
             if not profile_data or len(profile_data[0]) < 7:
                 return jsonify({"error": "Profile data incomplete"}), 404
+            
+            if user_role == "ngo" and len(profile_data[0]) < 4:
+                return jsonify({"error": "NGO profile data incomplete"}), 404
+            elif user_role != "ngo" and len(profile_data[0]) < 7:
+                return jsonify({"error": "Profile data incomplete"}), 404
+            
+            if user_role != "ngo":
+                address_id = profile_data[0][6]
+            else:
+                address_id = profile_data[0][3]  # NGO query returns 4 columns; ADDRESSID is the 4th
 
-            address_id = profile_data[0][6]
-            address_data = query("SELECT STATE, DISTRICT, STREET, HOUSE, PINCODE FROM ADDRESS WHERE ADDRESSID = :1", (address_id,))
+
+            if user_role != "ngo":
+                address_data = query("SELECT STATE, DISTRICT, STREET, HOUSE, PINCODE FROM ADDRESS WHERE ADDRESSID = :1", (address_id,))
+            else:
+                address_data = query("SELECT STATE, DISTRICT, STREET,PINCODE FROM ADDRESS WHERE ADDRESSID = :1", (address_id,))
+                
             if not address_data:
                 return jsonify({"error": "Address not found"}), 404
 
@@ -261,9 +277,21 @@ def create_app():
             if not username:
                 return jsonify({"error": "Username not found"}), 404
 
-            dob_str = profile_data[0][5].strftime('%Y-%m-%d') if profile_data[0][5] else "2000-01-01"
+            if user_role == "ngo":
+                user_profile = {
+                "username": username[0][0],
+                 "ngoname": profile_data[0][0],
+                "email": profile_data[0][1],
+                "phone": profile_data[0][2],
+                "state": address_data[0][0],
+                "district": address_data[0][1],
+                "street": address_data[0][2],
+                "pincode": address_data[0][3]
+                }
+            else:
+                dob_str = profile_data[0][5].strftime('%Y-%m-%d') if profile_data[0][5] else "2000-01-01"
 
-            user_profile = {
+                user_profile = {
                 "username": username[0][0],
                 "fname": profile_data[0][0],
                 "lname": profile_data[0][1],
@@ -275,7 +303,7 @@ def create_app():
                 "district": address_data[0][1],
                 "street": address_data[0][2],
                 "house": address_data[0][3],
-                "pincode": address_data[0][4],
+                "pincode": address_data[0][4]
             }
 
             # Add donor-specific fields
@@ -309,12 +337,9 @@ def create_app():
             if not user_id:
                 return jsonify({"success": False, "error": "User not logged in"}), 401
 
-            # Ensure data is received correctly
-            if request.content_type == 'application/json':
-                data = request.json  # JSON data for PUT
-            else:
-                data = request.form  # Form data for POST
-
+           # Handle content type
+            data = request.json if request.content_type == 'application/json' else request.form
+            
             new_fname = data.get('first_name')
             new_lname = data.get('last_name')
             new_gender = data.get('gender')
@@ -366,10 +391,107 @@ def create_app():
 
     
     @app.route('/ngo')
-    @login_required
-    @role_required('ngo')
     def ngo():
-        return render_template("ngo.html")
+        user_id = session.get('user_id')
+        if not user_id:
+            return redirect('/login')
+            
+        current_year=datetime.now().year
+
+    # Total donations count
+        total_donations = query("SELECT count(*) FROM DONATION_ASSIGNMENT WHERE NGO_ID = :1 and STATUS='COMPLETED'", (user_id,))
+        c = total_donations[0][0] if total_donations else 0
+
+        name=query("select NGONAME from NGO where ID = :1",(user_id,))
+        org_name=name[0][0]
+
+    # Base month dictionary to hold counts
+        month_template = {
+        'Jan': 0, 'Feb': 0, 'Mar': 0, 'Apr': 0,
+        'May': 0, 'Jun': 0, 'Jul': 0, 'Aug': 0,
+        'Sep': 0, 'Oct': 0, 'Nov': 0, 'Dec': 0
+        }
+
+    # Query to get monthly data change STATU='completed' after pulling
+        donation_data = query("""
+        SELECT 
+            TO_CHAR(DONATIONDATE, 'Mon') AS Month_Name,
+            EXTRACT(MONTH FROM DONATIONDATE) AS Month_Number,
+            COUNT(*) AS Total_Donations
+        FROM 
+            DONATION
+        WHERE 
+            EXTRACT(YEAR FROM DONATIONDATE) = :1
+            AND NGO_ID = :2 AND STATUS='COMPLETED' 
+        GROUP BY 
+            TO_CHAR(DONATIONDATE, 'Mon'),
+            EXTRACT(MONTH FROM DONATIONDATE)
+        ORDER BY 
+            Month_Number
+    """, (current_year, user_id))
+
+    # Fill the template with query results
+        for row in donation_data:
+            month_name = row[0].strip()  # Just in case there's trailing space
+            c_count = row[2]
+            if month_name in month_template:
+                month_template[month_name] = c_count
+
+    # Prepare final chart data
+        month_labels = list(month_template.keys())
+        donation_values = list(month_template.values())
+
+        unclaimed_donations = query("""
+        SELECT 
+            DNR.FN || ' ' || DNR.LN AS Donor_Name,
+            ADDR.STREET AS Street_Name,
+            D.STATUS AS Donation_Status,
+            F.FOODNAME AS Food_Item,
+            TO_CHAR(D.DONATIONDATE, 'YYYY-MM-DD') AS Donation_Date
+        FROM 
+            DONATION D
+        JOIN 
+            DONOR DNR ON D.DONORID = DNR.ID
+        JOIN 
+            ADDRESS ADDR ON DNR.ADDRESSID = ADDR.ADDRESSID
+        JOIN 
+            FOOD F ON D.FOODID = F.FOODID
+        WHERE 
+            D.NGO_ID = :1
+            AND D.STATUS IN ('ACTIVE', 'PENDING')""", (user_id,))
+        
+        claimed_donations = query("""
+        SELECT 
+            DNR.FN || ' ' || DNR.LN AS Donor_Name,
+            ADDR.STREET AS Street_Name,
+            F.FOODNAME AS Food_Item,
+            TO_CHAR(D.DONATIONDATE, 'YYYY-MM-DD') AS Donation_Date
+        FROM 
+            DONATION D
+        JOIN 
+            DONOR DNR ON D.DONORID = DNR.ID
+        JOIN 
+            ADDRESS ADDR ON DNR.ADDRESSID = ADDR.ADDRESSID
+        JOIN 
+            FOOD F ON D.FOODID = F.FOODID
+        WHERE 
+            D.NGO_ID = :1
+            AND D.STATUS='COMPLETED'""", (user_id,))
+
+        claimed_result = query(
+        "SELECT COUNT(*) FROM DONATION_ASSIGNMENT WHERE NGO_ID = :1 AND STATUS = 'COMPLETED'", (user_id,))
+        claimed_count = claimed_result[0][0] if claimed_result else 0
+
+        # Total unclaimed donations count
+        unclaimed_result = query(
+        "SELECT COUNT(*) FROM DONATION WHERE NGO_ID = :1 AND STATUS IN ('ACTIVE', 'PENDING')", (user_id,))
+        unclaimed_count = unclaimed_result[0][0] if unclaimed_result else 0
+
+        return render_template("ngo.html", 
+                           total_donations=c,org_name=org_name,
+                           month_labels=month_labels,
+                           donation_values=donation_values,current_year=current_year,unclaimed_donations=unclaimed_donations,claimed_donations=claimed_donations,claimed_count=claimed_count,unclaimed_count=unclaimed_count)
+
     
     @app.route('/ngo_profile')
     def ngo_profile():
