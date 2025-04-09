@@ -1,6 +1,6 @@
 
 import os
-from flask import Flask, render_template, request, jsonify, session, url_for
+from flask import Flask, render_template, request, jsonify, session,redirect, url_for
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from database import *
 from datetime import datetime, timedelta
@@ -164,7 +164,7 @@ def create_app():
                 (Add_id, state, district, street, pincode))                
             else:
                  insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",
-                (Add_id, state, district, street,pincode)) 
+                (Add_id, state, district, street,house,pincode)) 
 
             return jsonify({"success": True})
           
@@ -370,11 +370,21 @@ def create_app():
         all_relevant_pincodes = [ngo_pincode] + nearby_pincodes
         donor_food_data= get_donors_by_pincode(all_relevant_pincodes)
         print("Donor-Food Data:", donor_food_data)
-
-        
         return render_template('ngo.html', donor_food_data=donor_food_data)
 
+    
+    @app.route('/accept_donation', methods=['POST'])
+    def accept_donation():
+        donation_id = request.form.get('donation_id')  # comes from the hidden input in the form
+        ngo_id = current_user.id  # gets the current logged-in NGO's user id
 
+        if donation_id and ngo_id:
+           update(
+            "UPDATE donation SET ngo_id = :ngo_id WHERE donationid = :donation_id",
+            {'donation_id': donation_id, 'ngo_id': ngo_id}
+        )
+
+        return redirect(url_for('ngo'))
    
     @app.route('/ngo_profile')
     def ngo_profile():
