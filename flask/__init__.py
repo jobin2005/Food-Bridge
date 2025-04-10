@@ -316,9 +316,6 @@ def create_app():
                 profile_data = query("select NGONAME,EMAIL,PHONE,ADDRESSID from NGO where ID = :1", (user_id,))
             else:
                 return jsonify({"error": "Invalid user role"}), 400
-
-            if not profile_data or len(profile_data[0]) < 7:
-                return jsonify({"error": "Profile data incomplete"}), 404
             
             if user_role == "ngo" and len(profile_data[0]) < 4:
                 return jsonify({"error": "NGO profile data incomplete"}), 404
