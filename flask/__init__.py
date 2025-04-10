@@ -564,13 +564,11 @@ def create_app():
         """, (user_id,))
 
         # 👉 Claimed donation count
-        claimed_result = query(
-            "SELECT COUNT(*) FROM DONATION_ASSIGNMENT WHERE NGO_ID = :1 AND STATUS = 'COMPLETED'", (user_id,))
+        claimed_result = query("SELECT COUNT(*) FROM DONATION WHERE NGO_ID = :1 AND STATUS = 'COMPLETED'", (user_id,))
         claimed_count = claimed_result[0][0] if claimed_result else 0
 
         # 👉 Unclaimed donation count
-        unclaimed_result = query(
-            "SELECT COUNT(*) FROM DONATION WHERE NGO_ID = :1 AND STATUS IN ('ACTIVE', 'PENDING')", (user_id,))
+        unclaimed_result = query("SELECT COUNT(*) FROM DONATION WHERE NGO_ID = :1 AND STATUS IN ('ACTIVE', 'PENDING')", (user_id,))
         unclaimed_count = unclaimed_result[0][0] if unclaimed_result else 0
 
         # ----------------------------------------------
@@ -611,16 +609,16 @@ def create_app():
 
         records = query("""
             SELECT a.ASSIGNMENT_ID, d.DONATIONID, fi.FOODNAME AS food_item, 
-                do.FN || ' ' || do.LN AS donor_name,
-                n.NGONAME AS ngo_name,
-                a.STATUS
+            do.FN || ' ' || do.LN AS donor_name,
+            n.NGONAME AS ngo_name,
+            d.STATUS
             FROM DONATION d
             JOIN FOOD fi ON d.FOODID = fi.FOODID
             JOIN DONOR do ON d.DONORID = do.ID
             JOIN DONATION_ASSIGNMENT a ON d.DONATIONID = a.DONATION_ID
-            JOIN NGO n ON a.NGO_ID = n.ID
+            JOIN NGO n ON d.NGO_ID = n.ID
             WHERE a.VOLUNTEER_ID = :1
-            AND a.STATUS = 'ACTIVE'
+            AND d.STATUS = 'ACTIVE'
         """, (volunteer_id,))
 
         # Convert result to a list of dicts
@@ -676,7 +674,6 @@ def create_app():
                 SET AVAILABLE = :1
                 WHERE ID = :2
             """, (1, volunteer_id))
-            
 
             return jsonify({'success': True})
 
@@ -689,7 +686,6 @@ def create_app():
     @login_required
     @role_required('volunteer')
     def volunteer():
-
         result = query("SELECT FN FROM VOLUNTEER WHERE ID = :ID", {"ID": current_user.id})
         if not result:
             return "Volunteer profile not found", 404  # or redirect, or render a friendly error page
@@ -776,46 +772,6 @@ def create_app():
             update("UPDATE DONATION SET STATUS = 'COMPLETED' WHERE DONATIONID = :1",(dono_id,))
 
         return jsonify({"message": "Donation status updated"}), 200
-    
-    @app.route('/vol_admin_assign')
-    def vol_admin_assign():
-        ngo_id = current_user.id  # or however you identify the NGO for admin's view    
-        volunteers = get_nearby_volunteers_from_ngo(ngo_id)
-
-        donor_sql = "SELECT donorid FROM donation WHERE ngo_id = :ngo_id AND status='pending'"
-        donor_result = query(donor_sql, {'ngo_id': ngo_id})
-        donor_id = donor_result[0][0] if donor_result else None
-        
-        return render_template("vol_admin_assign.html", volunteers=volunteers,donor_id=donor_id)
-    
-    
-    @app.route('/assign_volunteer', methods=['POST'])
-    def assign_volunteer():
-        volunteer_id = request.form.get('volunteer_id')  # From form input (still called volunteer_id in HTML)
-        donor_id = request.form.get('donor_id')          # From form input (still called donor_id in HTML)
-
-        # Step 1: Get the matching donation ID based on donor ID
-        donation_sql = """
-        SELECT donationid FROM donation WHERE donorid = :donor_id AND status = 'pending'
-        """
-        donation_result = query(donation_sql, {'donor_id': donor_id})
-    
-        if donation_result:
-           donation_id = donation_result[0][0]
-
-        # Step 2: Assign the volunteer and update status
-           update_sql = """
-            UPDATE donation
-            SET  status = 'active'
-            WHERE donationid = :donation_id
-        """
-           update(update_sql, {
-            
-            'donation_id': donation_id
-        })
-
-        # Step 3: Redirect back to admin dashboard
-        return redirect(url_for('/vol_admin_assign'))
 
     return app
 
