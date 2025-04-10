@@ -81,6 +81,7 @@
 			color: #249b6a;
 		}
 
+
 		.big-section {
 			margin: 20px auto;
 			display: flex;
@@ -287,12 +288,12 @@
 			<a href="admin">Dashboard</a>
 			<a href="admin?section=assign">Assign Volunteers</a>
 			<a href="admin?section=verify">Verify Users</a>
+
 			<a href="logout">Log Out</a>
 		</div>
 	</aside>
 	<div class="main-content">
-		{% if request.args.get('section','') == '' and request.args.get('verify','') == '' and
-		request.args.get('assign','') == '' %}
+		{% if request.args.get('section','') == '' and request.args.get('verify','') == '' and request.args.get('assign','') == '' %}
 		<main class="dashboard">
 			<header>
 				<h2>Welcome, {{ current_user.username }}</h2>

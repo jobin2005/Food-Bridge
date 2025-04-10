@@ -1,11 +1,9 @@
 # utils/pincode.py
-import os
 from geopy.distance import geodesic
 import pandas as pd
 
 # Load pincode data
-csv_path = os.path.join(os.path.dirname(__file__), 'pincode_lat_long.csv')
-pincode_df = pd.read_csv(csv_path)
+pincode_df = pd.read_csv('pincode_lat_long.csv')
 pincode_df.dropna(subset=['latitude', 'longitude'], inplace=True)
 pincode_df['pincode'] = pincode_df['key'].astype(str).str.extract(r'(\d{6})')
 

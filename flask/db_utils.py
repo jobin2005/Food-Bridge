@@ -9,9 +9,3 @@ def get_ngo_pincode(user_id):
     """
     result = query(sql, {'user_id': user_id})
     return result[0][0] if result else None
-
-
-
-
-
-

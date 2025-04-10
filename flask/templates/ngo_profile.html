@@ -91,17 +91,46 @@
         <p>Update and view your organization details below.</p>
 
         <ul class="details-list">
-            <li><strong>Organization Name:</strong> Green Earth NGO</li>
-            <li><strong>Email:</strong> contact@greenearth.org</li>
-            <li><strong>Phone:</strong> +1 234 567 890</li>
-            <li><strong>Address:</strong> 123 Green St, Nature City</li>
-           
+            <li><strong>Organization Name:</strong> <span id="ngoname">Loading...</span></li>
+            <li><strong>Email:</strong> <span id="email">Loading...</span></li>
+            <li><strong>Phone:</strong> <span id="phone">Loading...</span></li>
+            <li><strong>Address:</strong> <span id="address">Loading...</span></li>
         </ul>
-        <button class="update-btn">Update Profile</button>
-    </section>
+        
+        <a href="/update_profile?role=ngo">
+            <button class="update-btn">Update Profile</button>
+        </a>
+            </section>
     
     <div class="footer">
         <p>&copy; 2025 Food Bridge NGO. All rights reserved.</p>
     </div>
+    <script>
+        async function loadNGOProfile() {
+            try {
+                let response = await fetch("/get_profile");
+                let data = await response.json();
+    
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+    
+                document.getElementById('ngoname').textContent = data.ngoname || "N/A";
+                document.getElementById('email').textContent = data.email || "N/A";
+                document.getElementById('phone').textContent = data.phone || "N/A";
+    
+                let address = `${data.street || ''}, ${data.district || ''}, ${data.state || ''}, ${data.pincode || ''}`;
+                document.getElementById('address').textContent = address;
+            } catch (error) {
+                console.error("Error loading profile:", error);
+                alert("Failed to load profile. Please try again.");
+            }
+        }
+    
+        window.onload = loadNGOProfile;
+    </script>
+    
+    
 </body>
 </html>

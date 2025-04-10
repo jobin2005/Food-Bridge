@@ -112,7 +112,9 @@
     </div>
 
     <div class="dashboard">
-        <h1>Welcome, Sir!</h1>
+        <h1>Welcome, {{ org_name }}!</h1>
+    
+        <!-- Nearby Donors -->
         <div class="card" style="margin-top: 20px;">
             <h2>Nearby Donors</h2>
             <table class="donation-table">
@@ -120,30 +122,42 @@
                     <tr>
                         <th>Donor Name</th>
                         <th>Food Item</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for donor_name,food_name in donor_food_data %}
-                        <tr>
-                            <td>{{ donor_name }}</td>
-                            <td>{{ food_name if food_name else 'N/A' }}</td>
-                        </tr>
+                    {% for item in donor_food_data %}
+                    <tr>
+                        <td>{{ item.donor_name }}</td>
+                        <td>{{ item.food_name }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('accept_donation') }}">
+                                <input type="hidden" name="donation_id" value="{{ item.donation_id }}">
+                                {% if item.ngo_id %}
+                                    <button type="submit" disabled class="accepted">Accepted</button>
+                                {% else %}
+                                    <button type="submit">Accept</button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
                     {% else %}
-                        <tr><td colspan="2">No nearby donors found.</td></tr>
+                    <tr><td colspan="3">No nearby donors found.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        <!-- Stats Card -->
+    
+        <!-- Donation Stats -->
         <div class="stats">
             <div class="card">
                 <h3>Total Donations</h3>
-                <p><strong>1532</strong></p>
+                <p><strong><span id="donation_count">{{ total_donations }}</span></strong></p>
                 <canvas id="donationsChart"></canvas>
             </div>
         </div>
-
-        <!-- Donations Section -->
+    
+        <!-- Claimed / Unclaimed Tables -->
         <div class="donations">
             <div class="card">
                 <h3>Unclaimed Donations</h3>
@@ -152,51 +166,127 @@
                         <th>Donator Name</th>
                         <th>Place</th>
                         <th>Status</th>
+                        <th>Item Name</th>
+                        <th>Donation Date</th>
                     </tr>
-                    <tr><td>Name</td><td>Location</td><td>Pending</td></tr>
+                    {% for donation in unclaimed_donations %}
+                    <tr>
+                        <td>{{ donation[0] }}</td>
+                        <td>{{ donation[1] }}</td>
+                        <td>{{ donation[2] }}</td>
+                        <td>{{ donation[3] }}</td>
+                        <td>{{ donation[4] }}</td>
+                    </tr>
+                    {% endfor %}
                 </table>
             </div>
+    
             <div class="card">
                 <h3>Claimed Donations</h3>
                 <table class="donation-table">
                     <tr>
                         <th>Donator Name</th>
                         <th>Place</th>
+                        <th>Item Name</th>
+                        <th>Donation Date</th>
                     </tr>
-                    <tr><td>Name</td><td>Location</td></tr>
+                    {% for donation in claimed_donations %}
+                    <tr>
+                        <td>{{ donation[0] }}</td>
+                        <td>{{ donation[1] }}</td>
+                        <td>{{ donation[2] }}</td>
+                        <td>{{ donation[3] }}</td>
+                    </tr>
+                    {% endfor %}
                 </table>
             </div>
         </div>
-
+    
+        <!-- Pie Chart -->
         <div class="card chart-container">
             <h3>Donations Overview</h3>
-            <!-- Chart placeholder -->
+            <canvas id="donationPieChart" width="400" height="400"></canvas>
         </div>
     </div>
+    
+    <!-- Optional CSS for Accepted Button -->
+    <style>
+        .accepted {
+            background-color: #ccc;
+            color: #444;
+            cursor: not-allowed;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
         const ctx = document.getElementById('donationsChart').getContext('2d');
         const donationsChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                labels: {{ month_labels | tojson }},
                 datasets: [{
-                    label: 'Total Donations',
-                    data: [5, 10, 15, 12, 14, 20, 13, 18, 7, 12, 9, 11],
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
+                    label: 'Donations in {{ current_year }}',
+                    data: {{ donation_values | tojson }},
+                    backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 2,
+                    borderRadius: 4
                 }]
             },
             options: {
                 responsive: true,
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
                     }
                 }
             }
         });
-    </script>
+        
+        const pieCtx = document.getElementById('donationPieChart').getContext('2d');
+        const donationPieChart = new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Claimed', 'Unclaimed'],
+                datasets: [{
+                    label: 'Donation Status',
+                    data: [{{ claimed_count }}, {{ unclaimed_count }}],
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.6)',  // Claimed
+                        'rgba(255, 99, 132, 0.6)'   // Unclaimed
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 99, 132, 1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.chart._metasets[context.datasetIndex].total;
+                                const value = context.raw;
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${context.label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        </script>
+        
+    
 </body>
 </html>
