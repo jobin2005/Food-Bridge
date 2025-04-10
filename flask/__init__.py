@@ -692,13 +692,34 @@ def create_app():
     @login_required
     @role_required('volunteer')
     def volunteer():
+        volunteer_id = current_user.id
 
-        result = query("SELECT FN FROM VOLUNTEER WHERE ID = :ID", {"ID": current_user.id})
+        # Get volunteer's first name
+        result = query("SELECT FN FROM VOLUNTEER WHERE ID = :ID", {"ID": volunteer_id})
         if not result:
-            return "Volunteer profile not found", 404  # or redirect, or render a friendly error page
+            return "Volunteer profile not found", 404
+
         user_fn = result[0][0]
 
-        return render_template("volunteer.html", user_fn=user_fn)
+        # Get stats: active (ONGOING), cleared (COMPLETED), pending (PENDING)
+        stats_result = query("""
+            SELECT STATUS, COUNT(*) 
+            FROM DONATION_ASSIGNMENT
+            WHERE VOLUNTEER_ID = :1
+            GROUP BY STATUS
+        """, (volunteer_id,))
+
+        # Initialize all to 0
+        stats = {'ACTIVE': 0, 'COMPLETED': 0, 'PENDING': 0}
+
+        for row in stats_result:
+            status = row[0].upper()
+            count = row[1]
+            if status in stats:
+                stats[status] = count
+
+        return render_template("volunteer.html", user_fn=user_fn, stats=stats)
+
     
     @app.route('/volunteer_profile')
     def volunteer_profile():

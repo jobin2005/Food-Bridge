@@ -302,10 +302,17 @@
                     <p>One fingerprint doesn't fade from the life we touch...</p>
                 </header>
                 <div class="stats">
-                    <div class="box">Active Pickups <br><span>2</span></div>
-                    <div class="box">Cleared Pickups <br><span>2</span></div>
-                    <div class="box">Pending Pickups <br><span>0</span></div>
+                    <div class="box">
+                        Active Pickups <br><span>{{ stats['ACTIVE'] }}</span>
+                    </div>
+                    <div class="box">
+                        Cleared Pickups <br><span>{{ stats['COMPLETED'] }}</span>
+                    </div>
+                    <div class="box">
+                        Pending Pickups <br><span>{{ stats['PENDING'] }}</span>
+                    </div>
                 </div>
+                
                 <section class="donation-overview">
                     <h4>Donation Overview</h4>
                     {% if records %}
