@@ -9,10 +9,7 @@ from functools import wraps
 from database import *
 from donor_controller import get_donors_by_pincode
 from pincode import get_nearby_pincodes
-
-from donor_controller import get_donors_by_pincode  # You write this
-from pincode import get_nearby_pincodes
-from flask import abort
+from volunteer_mapping import get_nearby_volunteers_from_ngo
 from db_utils import get_ngo_pincode
 
 class User(UserMixin):
@@ -483,7 +480,7 @@ def create_app():
         current_year = datetime.now().year
 
         # 👉 Total completed donations count
-        total_donations = query("SELECT count(*) FROM DONATION_ASSIGNMENT WHERE NGO_ID = :1 and STATUS='COMPLETED'", (user_id,))
+        total_donations = query("SELECT COUNT(*) FROM DONATION WHERE NGO_ID = :1 and STATUS='COMPLETED'", (user_id,))
         c = total_donations[0][0] if total_donations else 0
 
         # 👉 NGO name
@@ -711,12 +708,23 @@ def create_app():
         unverified_ngos = query("SELECT ID, NGONAME, OWNERNAME, EMAIL, PHONE, REGISTRATION_ID, STATE, DISTRICT, STREET, HOUSE, PINCODE FROM NGO, ADDRESS WHERE VERIFICATION_STATUS = 0 AND NGO.ADDRESSID = ADDRESS.ADDRESSID ORDER BY ID")
         unverified_vols = query("SELECT ID, FN, LN, GENDER, DOB, EMAIL, PHONE, SERVICEAREA, STATE, DISTRICT, STREET, HOUSE, PINCODE FROM VOLUNTEER, ADDRESS WHERE VERIFICATION_STATUS = 0 AND VOLUNTEER.ADDRESSID = ADDRESS.ADDRESSID ORDER BY ID")
 
-        pending_donos = query("SELECT D.DONATIONID, D.FOODID, D.DONORID, D.STATUS, TO_CHAR(D.DONATIONDATE, 'Month DD, YYYY'), D.NGO_ID, R.FN, R.LN, R.PHONE, A.STATE, A.DISTRICT, A.STREET, A.HOUSE, A.PINCODE, F.FOODNAME, F.QUANTITY, TO_CHAR(F.SHELFLIFE, 'DD/MM/YYYY') FROM DONATION D JOIN DONOR R ON D.DONORID = R.ID JOIN ADDRESS A ON R.ADDRESSID = A.ADDRESSID JOIN FOOD F ON D.FOODID = F.FOODID ORDER BY D.DONATIONID")
+        donos = query("SELECT D.DONATIONID, D.FOODID, D.DONORID, D.STATUS, TO_CHAR(D.DONATIONDATE, 'Month DD, YYYY'), D.NGO_ID, R.FN, R.LN, R.PHONE, A.STATE, A.DISTRICT, A.STREET, A.HOUSE, A.PINCODE, F.FOODNAME, F.QUANTITY, TO_CHAR(F.SHELFLIFE, 'DD/MM/YYYY') FROM DONATION D JOIN DONOR R ON D.DONORID = R.ID JOIN ADDRESS A ON R.ADDRESSID = A.ADDRESSID JOIN FOOD F ON D.FOODID = F.FOODID WHERE D.NGO_ID IS NOT NULL ORDER BY D.DONATIONID")
 
-        avail_vols = query("SELECT * FROM VOLUNTEER WHERE VERIFICATION_STATUS = 1 AND AVAILABLE = 1")
+        pending_donos = [d for d in donos if d[3] == 'PENDING']
+        active_donos = [d for d in donos if d[3] == 'ACTIVE']
+
+        avail_vols = {}
+
+        ngo_list = query("SELECT ID FROM NGO WHERE VERIFICATION_STATUS = 1")
+
+        for ngo in ngo_list:
+            volunteers = get_nearby_volunteers_from_ngo(ngo[0])
+            avail_vols[ngo[0]] = volunteers
+
+        print(avail_vols[29])
 
         assigned_vols = query("SELECT * FROM VOLUNTEER, DONATION_ASSIGNMENT WHERE VERIFICATION_STATUS = 1 AND AVAILABLE = 0 AND ID = VOLUNTEER_ID")
-        return render_template("admin.html",unverified_ngos=unverified_ngos, pending_donos=pending_donos, unverified_vols=unverified_vols,avail_vols=avail_vols,assigned_vols=assigned_vols)
+        return render_template("admin.html",unverified_ngos=unverified_ngos, pending_donos=pending_donos, unverified_vols=unverified_vols,avail_vols=avail_vols,assigned_vols=assigned_vols,active_donos=active_donos,donos=donos)
 
     @app.route('/verify', methods=['POST'])
     def verify():
@@ -755,6 +763,59 @@ def create_app():
         delete("DELETE FROM DONATION_ASSIGNMENT WHERE DONATION_ID = :1 AND VOLUNTEER_ID = :2", (dono_id,vol_id))
 
         return jsonify({"message": "Volunteer Unassigned"}), 200
+    
+    @app.route('/update_status', methods=['POST'])
+    def update_status():
+        data = request.get_json()
+        dono_id = data.get('dono_id')
+        status = data.get('status')
+
+        if status == 'pending':
+            update("UPDATE DONATION SET STATUS = 'ACTIVE' WHERE DONATIONID = :1",(dono_id,))
+        elif status == 'active':
+            update("UPDATE DONATION SET STATUS = 'COMPLETED' WHERE DONATIONID = :1",(dono_id,))
+
+        return jsonify({"message": "Donation status updated"}), 200
+    
+    @app.route('/vol_admin_assign')
+    def vol_admin_assign():
+        ngo_id = current_user.id  # or however you identify the NGO for admin's view    
+        volunteers = get_nearby_volunteers_from_ngo(ngo_id)
+
+        donor_sql = "SELECT donorid FROM donation WHERE ngo_id = :ngo_id AND status='pending'"
+        donor_result = query(donor_sql, {'ngo_id': ngo_id})
+        donor_id = donor_result[0][0] if donor_result else None
+        
+        return render_template("vol_admin_assign.html", volunteers=volunteers,donor_id=donor_id)
+    
+    
+    @app.route('/assign_volunteer', methods=['POST'])
+    def assign_volunteer():
+        volunteer_id = request.form.get('volunteer_id')  # From form input (still called volunteer_id in HTML)
+        donor_id = request.form.get('donor_id')          # From form input (still called donor_id in HTML)
+
+        # Step 1: Get the matching donation ID based on donor ID
+        donation_sql = """
+        SELECT donationid FROM donation WHERE donorid = :donor_id AND status = 'pending'
+        """
+        donation_result = query(donation_sql, {'donor_id': donor_id})
+    
+        if donation_result:
+           donation_id = donation_result[0][0]
+
+        # Step 2: Assign the volunteer and update status
+           update_sql = """
+            UPDATE donation
+            SET  status = 'active'
+            WHERE donationid = :donation_id
+        """
+           update(update_sql, {
+            
+            'donation_id': donation_id
+        })
+
+        # Step 3: Redirect back to admin dashboard
+        return redirect(url_for('/vol_admin_assign'))
 
     return app
 

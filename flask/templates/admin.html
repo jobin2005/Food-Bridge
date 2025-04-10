@@ -309,6 +309,10 @@
 					<div class="stat-number">{{ pending_donos|length }}</div>
 					<div class="stat-label">Pending Donations</div>
 				</div>
+				<div class="stat-panel">
+					<div class="stat-number">{{ active_donos|length }}</div>
+					<div class="stat-label">Active Donations</div>
+				</div>
 			</div>
 			<div class="section" id="active">
 				<h3>Active Donations</h3>
@@ -319,7 +323,7 @@
 						<th>Donation Location</th>
 						<th>View</th>
 					</tr>
-					{% for dono in pending_donos[:5] %}
+					{% for dono in active_donos[:5] %}
 					<tr>
 						<td>{{ dono[0] }}</td>
 						<td>{{ dono[4] }}</td>
@@ -327,7 +331,7 @@
 						<td><button onclick="location.href='/admin?assign={{ dono[0] }}'">View</button></td>
 					</tr>
 					{% endfor %}
-					{% if pending_donos|length > 3 %}
+					{% if active_donos|length > 3 %}
 					<tr>
 						{% for i in range(4) %}
 						<td>...</td>
@@ -349,14 +353,12 @@
 						<th>Assign</th>
 					</tr>
 					{% for dono in pending_donos %}
-						{% if dono[3] == 'PENDING' %}
-						<tr>
-							<td>{{ dono[0] }}</td>
-							<td>{{ dono[4] }}</td>
-							<td>{{ dono[12] + ', ' + dono[11] + ', ' + dono[10] + ', ' + dono[9] + ', ' + dono[13] }}</td>
-							<td><button onclick="location.href='/admin?assign={{ dono[0] }}'">Assign</button></td>
-						</tr>
-						{% endif %}
+					<tr>
+						<td>{{ dono[0] }}</td>
+						<td>{{ dono[4] }}</td>
+						<td>{{ dono[12] + ', ' + dono[11] + ', ' + dono[10] + ', ' + dono[9] + ', ' + dono[13] }}</td>
+						<td><button onclick="location.href='/admin?assign={{ dono[0] }}'">Assign</button></td>
+					</tr>
 					{% endfor %}
 				</table>
 			</div>
@@ -369,15 +371,13 @@
 						<th>Donation Location</th>
 						<th>View</th>
 					</tr>
-					{% for dono in pending_donos %}
-						{% if dono[3] == 'ACTIVE' %}
-						<tr>
-							<td>{{ dono[0] }}</td>
-							<td>{{ dono[4] }}</td>
-							<td>{{ dono[12] + ', ' + dono[11] + ', ' + dono[10] + ', ' + dono[9] + ', ' + dono[13] }}</td>
-							<td><button onclick="location.href='/admin?assign={{ dono[0] }}'">View</button></td>
-						</tr>
-						{% endif %}
+					{% for dono in active_donos %}
+					<tr>
+						<td>{{ dono[0] }}</td>
+						<td>{{ dono[4] }}</td>
+						<td>{{ dono[12] + ', ' + dono[11] + ', ' + dono[10] + ', ' + dono[9] + ', ' + dono[13] }}</td>
+						<td><button onclick="location.href='/admin?assign={{ dono[0] }}'">View</button></td>
+					</tr>
 					{% endfor %}
 				</table>
 			</div>
@@ -399,9 +399,9 @@
 					<tr>
 						<td>{{ ngo[0] }}</td>
 						<td>{{ ngo[1] }}</td>
+						<td>{{ ngo[2] }}</td>
 						<td>{{ ngo[3] }}</td>
 						<td>{{ ngo[4] }}</td>
-						<td>{{ ngo[5] }}</td>
 						<td><button onclick="location.href='/admin?verify={{ ngo[0] }}'">View</button></td>
 					</tr>
 					{% endfor %}
@@ -536,7 +536,7 @@
 		</main>
 		{% elif request.args.get('assign','') %}
 		<a href="/admin?section=assign" class="back-button">← Back</a>
-			{% for dono in pending_donos %}
+			{% for dono in donos %}
 				{% if dono[0]|string == request.args.get('assign','') %}
 				<div class="donation-details">
 					<h3>Donation Details</h3>
@@ -549,7 +549,11 @@
 						<div>Shelf-Life: {{ dono[16] }}</div>
 						<div>Donor Phone: {{ dono[8] }}</div>
 					</div>
-					<button class="donation-status-btn">Set Donation to Active / Completed</button>
+					{% if dono[3] == 'PENDING' %}
+					<button class="donation-status-btn" onclick="update_status({{ dono[0] }},'pending')">Set Donation to Active</button>
+					{% elif dono[3] == 'ACTIVE' %}
+					<button class="donation-status-btn" onclick="update_status({{ dono[0] }},'active')">Set Donation to Completed</button>
+					{% endif %}
 				</div>
 
 				<div class="volunteer-section">
@@ -589,13 +593,13 @@
 							<th>Service Area</th>
 							<th>Assign</th>
 						</tr>
-						{% for volunteer in avail_vols %}
+						{% for volunteer in avail_vols[dono[5]] %}
 						<tr>
 							<td>{{ volunteer[0] }}</td>
-							<td>{{ volunteer[1] + ' ' + volunteer[2] }}</td>
-							<td>{{ volunteer[6] }}</td>
-							<td>{{ volunteer[5] }}</td>
-							<td>{{ volunteer[8] }}</td>
+							<td>{{ volunteer[1] }}</td>
+							<td>{{ volunteer[2] }}</td>
+							<td>{{ volunteer[3] }}</td>
+							<td>{{ volunteer[4] }}</td>
 							<td><button onclick="assign({{ volunteer[0] }},{{ dono[0] }})">Assign</button></td>
 						</tr>
 						{% endfor %}
@@ -663,6 +667,27 @@
 					location.reload();
 				} else {
 					alert("Failed to unassign volunteer.");
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+			});
+		}
+
+		function update_status(dono_id,status) {
+			fetch('/update_status', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ dono_id:dono_id,status:status })
+			})
+			.then(response => {
+				if (response.ok) {
+					alert("Donation status updated successfully!");
+					location.reload();
+				} else {
+					alert("Failed to update donation status.");
 				}
 			})
 			.catch(error => {
