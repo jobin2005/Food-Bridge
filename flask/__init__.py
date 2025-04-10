@@ -2,10 +2,14 @@ import os
 
 from flask import Flask, render_template, request, jsonify, session, url_for, abort, redirect
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from database import *
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from functools import wraps
+
+from database import *
+from donor_controller import get_donors_by_pincode
+from pincode import get_nearby_pincodes
+
 from donor_controller import get_donors_by_pincode  # You write this
 from pincode import get_nearby_pincodes
 from flask import abort
@@ -41,6 +45,12 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         user_data = query("SELECT ALLUSERS.ID, USERNAME, ROLE FROM LOGIN, ALLUSERS WHERE LOGIN.ID = ALLUSERS.ID AND LOGIN.ID = :ID", {"ID": user_id})
+
+        admin_data = query("SELECT ADMIN_ID, NAME, PASSWORD FROM ADMIN_ WHERE ADMIN_ID = :ID", {"ID": user_id})
+
+        if admin_data:
+            return User(admin_data[0][0], admin_data[0][1], "admin")
+        
         if user_data:
             return User(user_data[0][0], user_data[0][1], user_data[0][2])
         return None
@@ -70,14 +80,23 @@ def create_app():
 
             user_data = query("SELECT ID, USERNAME, PASSWORD FROM LOGIN WHERE USERNAME = :USERNAME", {"USERNAME": username})
 
+            admin_data = query("SELECT ADMIN_ID, NAME, PASSWORD FROM ADMIN_ WHERE NAME = :USERNAME", {"USERNAME": username})
+
+            if admin_data:
+                if password == admin_data[0][2]:
+                    user = User(admin_data[0][0],admin_data[0][1],"admin")
+                    login_user(user, remember=True)
+                    session['user_id'] = admin_data[0][0]
+                    return jsonify({"success": True, "role": "admin"})
+                    
+
             if user_data:  # If user exists
-                stored_password = user_data[0][2]  # Get stored password from DB
-                if password == stored_password:  # Check password
-                    user_role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(user_data[0][0],))
+                if password == user_data[0][2]:  # Check password
+                    user_role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(user_data[0][0],))[0][0]
                     user = User(user_data[0][0], user_data[0][1], user_role)
                     login_user(user, remember=True)
                     session['user_id'] = user_data[0][0]  # Store user ID in session  
-                    return jsonify({"success": True, "role": user_role})  # Search the role from the DB and redirects to the pge accordingly
+                    return jsonify({"success": True, "role": user_role})  # Search the role from the DB and redirects to the page accordingly
             return jsonify({"success": False, "error": "Invalid username or password!"}) 
 
         return render_template("login.html", user=current_user)
@@ -87,7 +106,6 @@ def create_app():
     @login_required
     def logout():
         session.clear()  # Clears session data
-        print(current_user.id)
         logout_user()
         return redirect(url_for('mainpage'))
     
@@ -143,16 +161,16 @@ def create_app():
             Fname = request.form.get('first_name')
             Lname = request.form.get('last_name')
             Gender = request.form.get('gender')
-            Dob = request.form.get('dob')
+            Dob = request.form.get('dob')  # expected input: 'YYYY-MM-DD'
+            dob_obj = datetime.strptime(Dob, '%Y-%m-%d')  # parse it
+            Dob_formatted = dob_obj.strftime('%d-%m-%Y')  # format to 'DD-MM-YYYY'
+
             Phone = request.form.get('mobile')
             Email = request.form.get('email')
-
-
             
             ngo_name = request.form.get('ngo_name')
             reg_id = request.form.get('reg_id')
             owner_name = request.form.get('owner')   
-
 
             # Insert address
             state = request.form.get('state')
@@ -163,31 +181,26 @@ def create_app():
 
             # Check if the address already exists
             if role == 'ngo':
-                existing_address = query("SELECT ADDRESSID FROM ADDRESS WHERE STATE = :1 AND DISTRICT = :2 AND STREET = :3 AND PINCODE = :4 AND HOUSE IS NULL",
-        (state, district, street, pincode))
+                existing_address = query("SELECT ADDRESSID FROM ADDRESS WHERE STATE = :1 AND DISTRICT = :2 AND STREET = :3 AND PINCODE = :4 AND HOUSE IS NULL", (state, district, street, pincode))
             else:
-                existing_address = query("SELECT ADDRESSID FROM ADDRESS WHERE STATE = :1 AND DISTRICT = :2 AND STREET = :3 AND HOUSE = :4 AND PINCODE = :5",
-        (state, district, street, house, pincode))
+                existing_address = query("SELECT ADDRESSID FROM ADDRESS WHERE STATE = :1 AND DISTRICT = :2 AND STREET = :3 AND HOUSE = :4 AND PINCODE = :5", (state, district, street, house, pincode))
 
             if existing_address:
                 Add_id = existing_address[0][0]
                 if role == "donor":
-                    insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)",
-                        (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
+                    insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'DD-MM-YYYY'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob_formatted, Phone, Email, Add_id))
                     insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
                     return jsonify({"success": True})
                 
                 elif role == "volunteer":
                     pincode = request.form.get('pincode')
                     print(new_id)
-                    insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
-                        (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+                    insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'DD-MM-YYYY'), :6, :7, :8, :9, :10)", (new_id, Fname, Lname, Gender, Dob_formatted, Phone, Email, Add_id, pincode, 0))
                     insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
                     return jsonify({"success": True})
 
                 elif role == "ngo":
-                    insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE,REGISTRATION_ID) VALUES (:1, :2, :3, :4, :5, :6, :7)",
-                    (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id))
+                    insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE,REGISTRATION_ID) VALUES (:1, :2, :3, :4, :5, :6, :7)", (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id))
                     insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
                     return jsonify({"success": True})
                 
@@ -205,14 +218,14 @@ def create_app():
                 
                  # Insert user details
             if role == "donor":
-                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8)",
-                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id))
+                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'DD-MM-YYYY'), :6, :7, :8)",
+                    (new_id, Fname, Lname, Gender, Dob_formatted, Phone, Email, Add_id))
                 insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
             elif role == "volunteer":
                 pincode = request.form.get('pincode')
                 print(new_id)
-                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'YYYY-MM-DD'), :6, :7, :8, :9, :10)",
-                    (new_id, Fname, Lname, Gender, Dob, Phone, Email, Add_id, pincode, 0))
+                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'DD-MM-YYYY'), :6, :7, :8, :9, :10)",
+                    (new_id, Fname, Lname, Gender, Dob_formatted, Phone, Email, Add_id, pincode, 0))
                 insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
 
             elif role == "ngo":
@@ -223,10 +236,8 @@ def create_app():
                 return jsonify({"success": False, "error": "Invalid role"}) 
                 
             return jsonify({"success": True})
-          
 
         return render_template("register.html", min_date=min_date)
-
     
     @app.route('/feedback')
     def feedback():
@@ -241,10 +252,10 @@ def create_app():
     @role_required('donor')
     def donor():
         current_date = datetime.now().strftime("%Y-%m-%d")
-        
+
         user_fn_result = query("SELECT FN FROM DONOR WHERE ID = :ID", {"ID": current_user.id})
         user_fn = user_fn_result[0][0] if user_fn_result else "Donor"
-        
+
         if request.method == "POST":
             try:
                 item_name = request.form.get('itemName')
@@ -253,12 +264,14 @@ def create_app():
                 donation_date = request.form.get('donationDate')  # Expected format: YYYY-MM-DD
                 shelf_life_days = int(request.form.get('shelfLife'))
 
-                # Convert to datetime object
+                # Convert donation date to date object
                 donation_date_obj = datetime.strptime(donation_date, '%Y-%m-%d')
 
-                # Format dates as strings for Oracle
-                donation_date_str = donation_date_obj.strftime('%Y-%m-%d')
-                shelf_life_str = (donation_date_obj + timedelta(days=shelf_life_days)).strftime('%Y-%m-%d')
+                # Format donation date as DD-MM-YYYY
+                formatted_donation_date = donation_date_obj.strftime('%d-%m-%Y')
+
+                # Calculate shelf life date and format as DD-MM-YYYY
+                shelf_life_date = (donation_date_obj + timedelta(days=shelf_life_days)).strftime('%d-%m-%Y')
 
                 # Generate new DONATIONID
                 x = query("SELECT DONATIONID FROM DONATION ORDER BY DONATIONID DESC")
@@ -269,16 +282,13 @@ def create_app():
                 food_id = 101 if not y or not y[0][0] else y[0][0] + 1
 
                 # Insert into FOOD table
-                insert("""
-                    INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE)
-                    VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'YYYY-MM-DD'))
-                """, (food_id, item_name, item_category, quantity, 'PENDING', shelf_life_str))
+
+                insert("INSERT INTO FOOD (FOODID, FOODNAME, FOODTYPE, QUANTITY, STATUS, SHELFLIFE) VALUES (:1, :2, :3, :4, :5, TO_DATE(:6, 'DD-MM-YYYY'))",
+                    (food_id, item_name, item_category, quantity, 'PENDING', shelf_life_date))
 
                 # Insert into DONATION table
-                insert("""
-                    INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE)
-                    VALUES (:1, :2, :3, 'PENDING', TO_DATE(:4, 'YYYY-MM-DD'))
-                """, (dono_id, food_id, current_user.id, donation_date_str))
+                insert("INSERT INTO DONATION (DONATIONID, FOODID, DONORID, STATUS, DONATIONDATE) VALUES (:1, :2, :3, 'PENDING', TO_DATE(:4, 'DD-MM-YYYY'))",
+                    (dono_id, food_id, current_user.id, formatted_donation_date))
 
                 return jsonify({"success": True, "message": "Donation successful!"})
 
@@ -306,7 +316,7 @@ def create_app():
             elif user_role == "volunteer":
                 profile_data = query("SELECT FN, LN, EMAIL, PHONE, GENDER, DOB, ADDRESSID FROM VOLUNTEER WHERE ID = :1", (user_id,))
             elif user_role == "ngo":
-                profile_data=query("select NGONAME,EMAIL,PHONE,ADDRESSID from NGO WHERE ID = :1", (user_id,))
+                profile_data = query("select NGONAME,EMAIL,PHONE,ADDRESSID from NGO where ID = :1", (user_id,))
             else:
                 return jsonify({"error": "Invalid user role"}), 400
 
@@ -323,7 +333,6 @@ def create_app():
             else:
                 address_id = profile_data[0][3]  # NGO query returns 4 columns; ADDRESSID is the 4th
 
-
             if user_role != "ngo":
                 address_data = query("SELECT STATE, DISTRICT, STREET, HOUSE, PINCODE FROM ADDRESS WHERE ADDRESSID = :1", (address_id,))
             else:
@@ -339,7 +348,7 @@ def create_app():
             if user_role == "ngo":
                 user_profile = {
                 "username": username[0][0],
-                 "ngoname": profile_data[0][0],
+                "ngoname": profile_data[0][0],
                 "email": profile_data[0][1],
                 "phone": profile_data[0][2],
                 "state": address_data[0][0],
@@ -368,29 +377,13 @@ def create_app():
             # Add donor-specific fields
             if user_role == "donor":
                 dono_count = query("SELECT COUNT(*) FROM DONATION WHERE DONORID = :1", (user_id,))
-                last_dono_result = query("""
-                    SELECT TO_CHAR(DONATIONDATE, 'FXFMMonth DD, YYYY', 'NLS_DATE_LANGUAGE = American')
-                    FROM DONATION
-                    WHERE DONATIONID = (
-                        SELECT MAX(DONATIONID)
-                        FROM DONATION
-                        WHERE DONORID = :1
-                    )
-                """, (user_id,))
-                
+                last_dono_result = query("SELECT TO_CHAR(DONATIONDATE, 'FXFMMonth DD, YYYY', 'NLS_DATE_LANGUAGE = American') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION WHERE DONORID = :1)", (user_id,))
                 user_profile["total_dono"] = dono_count[0][0] if dono_count else 0
                 user_profile["last_dono"] = last_dono_result[0][0] if last_dono_result else "N/A"
             elif user_role == "volunteer":
                 delv_count = query("SELECT COUNT(*) FROM DONATION_ASSIGNMENT WHERE VOLUNTEER_ID = :1", (user_id,))
-                last_delv_result = query("""
-                    SELECT TO_CHAR(D.DONATIONDATE, 'FMMonth DD, YYYY', 'NLS_DATE_LANGUAGE = American')
-                    FROM DONATION D
-                    JOIN DONATION_ASSIGNMENT A ON D.DONATIONID = A.DONATION_ID
-                    WHERE A.VOLUNTEER_ID = :1
-                    ORDER BY D.DONATIONDATE DESC
-                    FETCH FIRST 1 ROWS ONLY
-                """, (user_id,))
-                
+                last_delv_result = query("SELECT TO_CHAR(D.DONATIONDATE, 'FMMonth DD, YYYY', 'NLS_DATE_LANGUAGE = American') FROM DONATION D JOIN DONATION_ASSIGNMENT A ON D.DONATIONID = A.DONATION_ID WHERE A.VOLUNTEER_ID = :1 ORDER BY D.DONATIONDATE DESC FETCH FIRST 1 ROWS ONLY", (user_id,))
+
                 user_profile["total_delv"] = delv_count[0][0] if delv_count else 0
                 user_profile["last_delv"] = last_delv_result[0][0] if last_delv_result else "N/A"
 
@@ -479,7 +472,9 @@ def create_app():
 
         return redirect(url_for('ngo'))
     
-    @app.route('/ngo')
+    @app.route('/ngo',methods=['GET','POST'])
+    @login_required
+    @role_required('ngo')
     def ngo():
         user_id = session.get('user_id')
         if not user_id:
@@ -582,7 +577,7 @@ def create_app():
         unclaimed_count = unclaimed_result[0][0] if unclaimed_result else 0
 
         # ----------------------------------------------
-        # ✅ Nearby Donors Logic from ngo_donations route
+        # Nearby Donors Logic from ngo_donations route
         # ----------------------------------------------
         ngo_pincode = get_ngo_pincode(user_id)
 
@@ -608,7 +603,6 @@ def create_app():
             donor_food_data=donor_food_data
         )
 
-    
     @app.route('/ngo_profile')
     def ngo_profile():
         return render_template("ngo_profile.html")
@@ -698,6 +692,7 @@ def create_app():
     @login_required
     @role_required('volunteer')
     def volunteer():
+
         result = query("SELECT FN FROM VOLUNTEER WHERE ID = :ID", {"ID": current_user.id})
         if not result:
             return "Volunteer profile not found", 404  # or redirect, or render a friendly error page
@@ -708,6 +703,58 @@ def create_app():
     @app.route('/volunteer_profile')
     def volunteer_profile():
         return render_template("volunteer_profile.html")
+    
+    @app.route('/admin')
+    @login_required
+    @role_required('admin')
+    def admin():
+        unverified_ngos = query("SELECT ID, NGONAME, OWNERNAME, EMAIL, PHONE, REGISTRATION_ID, STATE, DISTRICT, STREET, HOUSE, PINCODE FROM NGO, ADDRESS WHERE VERIFICATION_STATUS = 0 AND NGO.ADDRESSID = ADDRESS.ADDRESSID ORDER BY ID")
+        unverified_vols = query("SELECT ID, FN, LN, GENDER, DOB, EMAIL, PHONE, SERVICEAREA, STATE, DISTRICT, STREET, HOUSE, PINCODE FROM VOLUNTEER, ADDRESS WHERE VERIFICATION_STATUS = 0 AND VOLUNTEER.ADDRESSID = ADDRESS.ADDRESSID ORDER BY ID")
+
+        pending_donos = query("SELECT D.DONATIONID, D.FOODID, D.DONORID, D.STATUS, TO_CHAR(D.DONATIONDATE, 'Month DD, YYYY'), D.NGO_ID, R.FN, R.LN, R.PHONE, A.STATE, A.DISTRICT, A.STREET, A.HOUSE, A.PINCODE, F.FOODNAME, F.QUANTITY, TO_CHAR(F.SHELFLIFE, 'DD/MM/YYYY') FROM DONATION D JOIN DONOR R ON D.DONORID = R.ID JOIN ADDRESS A ON R.ADDRESSID = A.ADDRESSID JOIN FOOD F ON D.FOODID = F.FOODID ORDER BY D.DONATIONID")
+
+        avail_vols = query("SELECT * FROM VOLUNTEER WHERE VERIFICATION_STATUS = 1 AND AVAILABLE = 1")
+
+        assigned_vols = query("SELECT * FROM VOLUNTEER, DONATION_ASSIGNMENT WHERE VERIFICATION_STATUS = 1 AND AVAILABLE = 0 AND ID = VOLUNTEER_ID")
+        return render_template("admin.html",unverified_ngos=unverified_ngos, pending_donos=pending_donos, unverified_vols=unverified_vols,avail_vols=avail_vols,assigned_vols=assigned_vols)
+
+    @app.route('/verify', methods=['POST'])
+    def verify():
+        data = request.get_json()
+        id = data.get('id')
+        role = str(data.get('role')).upper()
+
+        # Validate the role to avoid SQL injection
+        if role not in ["NGO", "VOLUNTEER", "DONOR"]:
+            return jsonify({"error": "Invalid role"}), 400
+
+        update(f"UPDATE {role} SET VERIFICATION_STATUS = 1 WHERE ID = :1", (id,))
+
+        return jsonify({"message": "User Verified"}), 200
+    
+    @app.route('/assign', methods=['POST'])
+    def assign():
+        data = request.get_json()
+        vol_id = data.get('vol_id')
+        dono_id = data.get('dono_id')
+
+        assign_id = query("SELECT NVL(MAX(ASSIGNMENT_ID), 100) + 1 FROM DONATION_ASSIGNMENT")[0][0]
+
+        update("UPDATE VOLUNTEER SET AVAILABLE = 0 WHERE ID = :1", (vol_id,))
+        insert("INSERT INTO DONATION_ASSIGNMENT (ASSIGNMENT_ID, DONATION_ID, VOLUNTEER_ID, NGO_ID, STATUS) VALUES(:1, :2, :3, 29, 'ACTIVE')", (assign_id,dono_id,vol_id))
+
+        return jsonify({"message": "Volunteer Assigned"}), 200
+    
+    @app.route('/unassign', methods=['POST'])
+    def unassign():
+        data = request.get_json()
+        vol_id = data.get('vol_id')
+        dono_id = data.get('dono_id')
+
+        update("UPDATE VOLUNTEER SET AVAILABLE = 1 WHERE ID = :1", (vol_id,))
+        delete("DELETE FROM DONATION_ASSIGNMENT WHERE DONATION_ID = :1 AND VOLUNTEER_ID = :2", (dono_id,vol_id))
+
+        return jsonify({"message": "Volunteer Unassigned"}), 200
 
     return app
 

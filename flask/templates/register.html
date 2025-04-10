@@ -78,7 +78,7 @@
 <body>
     <div class="container">
         <h1>Registration</h1>
-      
+        
         {% if request.args.get('role', '') == 'donor' or request.args.get('role', '') == 'volunteer' %}
         <form id="register-form">
             <input type="hidden" name="role" id="role-input">

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Food Bridge - Sign In</title>
+    <title>Login | FoodBridge</title>
     <style>
         /* General Styles */
         * {
@@ -159,17 +159,19 @@
     
             if (result.success) {
                 outputMessage.style.color = "green";
+                outputMessage.style.marginTop = "10px";
                 outputMessage.innerText = "Login successful! Redirecting...";
                 
                     if (result.role=='donor') {
                         window.location.href = "/donor";
-                      }
-                    else if (result.role == 'volunteer') {
+                    } else if (result.role == 'volunteer') {
                         window.location.href = "/volunteer";
-                    } 
-                    else if (result.role == 'ngo') {
+                    } else if (result.role == 'ngo') {
                         window.location.href = "/ngo";
-                    } else {
+                    } else if (result.role == 'admin') {
+                        window.location.href = "/admin";
+                    }else {
+                        outputMessage.style.marginTop = "10px";
                         outputMessage.innerText = 'Invalid Role';  // Show error message
                         outputMessage.style.color = "red";
                     }
@@ -177,7 +179,11 @@
             } else {
                 outputMessage.innerText = result.error;  // Show error message
                 outputMessage.style.color = "red";
+                outputMessage.style.marginTop = "10px";
             }
+
+            button.disabled = false;
+            button.innerText = "Sign in";
         });
     </script>
     
