@@ -344,7 +344,7 @@
 		{% elif request.args.get('section','') == 'assign' %}
 		<main>
 			<div class="section" id="pending">
-				<h3>Assign Volunteers to Donations</h3>
+				<h3>Pending Donations</h3>
 				<table>
 					<tr>
 						<th>Donation ID</th>
@@ -408,7 +408,7 @@
 				</table>
 			</div>
 			<div class="section" id="volunteer">
-				<h3>Verify volunteer</h3>
+				<h3>Verify Volunteer</h3>
 				<table>
 					<tr>
 						<th>Volunteer ID</th>
@@ -548,6 +548,7 @@
 						<div>Donor Address: {{ dono[12] + ', ' + dono[11] + ', ' + dono[10] + ', ' + dono[9] + ', ' + dono[13] }}</div>
 						<div>Shelf-Life: {{ dono[16] }}</div>
 						<div>Donor Phone: {{ dono[8] }}</div>
+						<div>NGO Name: {{ dono[17] }}</div>
 					</div>
 					{% if dono[3] == 'PENDING' %}
 					<button class="donation-status-btn" onclick="update_status({{ dono[0] }},'pending')">Set Donation to Active</button>
@@ -560,7 +561,7 @@
 					<h3>Assigned Volunteers</h3>
 					<table>
 						<tr>
-							<th>Volunteer ID</th>
+							<th>ID</th>
 							<th>Name</th>
 							<th>Email</th>
 							<th>Phone</th>
@@ -586,7 +587,7 @@
 					<h3>Available Volunteers</h3>
 					<table>
 						<tr>
-							<th>Volunteer ID</th>
+							<th>ID</th>
 							<th>Name</th>
 							<th>Email</th>
 							<th>Phone</th>

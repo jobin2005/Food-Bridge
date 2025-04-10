@@ -215,19 +215,15 @@ def create_app():
                 
                  # Insert user details
             if role == "donor":
-                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'DD-MM-YYYY'), :6, :7, :8)",
-                    (new_id, Fname, Lname, Gender, Dob_formatted, Phone, Email, Add_id))
+                insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'DD-MM-YYYY'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob_formatted, Phone, Email, Add_id))
                 insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
             elif role == "volunteer":
                 pincode = request.form.get('pincode')
                 print(new_id)
-                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'DD-MM-YYYY'), :6, :7, :8, :9, :10)",
-                    (new_id, Fname, Lname, Gender, Dob_formatted, Phone, Email, Add_id, pincode, 0))
+                insert("INSERT INTO VOLUNTEER (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID, SERVICEAREA, AVAILABLE) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'DD-MM-YYYY'), :6, :7, :8, :9, :10)", (new_id, Fname, Lname, Gender, Dob_formatted, Phone, Email, Add_id, pincode, 1))
                 insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
-
             elif role == "ngo":
-                insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE,REGISTRATION_ID) VALUES (:1, :2, :3, :4, :5, :6, :7)",
-                (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id))
+                insert("INSERT INTO NGO (ID, NGONAME, ADDRESSID, OWNERNAME, EMAIL, PHONE, REGISTRATION_ID) VALUES (:1, :2, :3, :4, :5, :6, :7)", (new_id, ngo_name, Add_id, owner_name, Email, Phone, reg_id))
                 insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
             else:
                 return jsonify({"success": False, "error": "Invalid role"}) 
@@ -316,9 +312,6 @@ def create_app():
                 profile_data = query("select NGONAME,EMAIL,PHONE,ADDRESSID from NGO where ID = :1", (user_id,))
             else:
                 return jsonify({"error": "Invalid user role"}), 400
-
-            if not profile_data or len(profile_data[0]) < 7:
-                return jsonify({"error": "Profile data incomplete"}), 404
             
             if user_role == "ngo" and len(profile_data[0]) < 4:
                 return jsonify({"error": "NGO profile data incomplete"}), 404
@@ -702,9 +695,9 @@ def create_app():
     @role_required('admin')
     def admin():
         unverified_ngos = query("SELECT ID, NGONAME, OWNERNAME, EMAIL, PHONE, REGISTRATION_ID, STATE, DISTRICT, STREET, HOUSE, PINCODE FROM NGO, ADDRESS WHERE VERIFICATION_STATUS = 0 AND NGO.ADDRESSID = ADDRESS.ADDRESSID ORDER BY ID")
-        unverified_vols = query("SELECT ID, FN, LN, GENDER, DOB, EMAIL, PHONE, SERVICEAREA, STATE, DISTRICT, STREET, HOUSE, PINCODE FROM VOLUNTEER, ADDRESS WHERE VERIFICATION_STATUS = 0 AND VOLUNTEER.ADDRESSID = ADDRESS.ADDRESSID ORDER BY ID")
+        unverified_vols = query("SELECT ID, FN, LN, GENDER, TO_CHAR(DOB, 'DD-MM-YYYY'), EMAIL, PHONE, SERVICEAREA, STATE, DISTRICT, STREET, HOUSE, PINCODE FROM VOLUNTEER, ADDRESS WHERE VERIFICATION_STATUS = 0 AND VOLUNTEER.ADDRESSID = ADDRESS.ADDRESSID ORDER BY ID")
 
-        donos = query("SELECT D.DONATIONID, D.FOODID, D.DONORID, D.STATUS, TO_CHAR(D.DONATIONDATE, 'Month DD, YYYY'), D.NGO_ID, R.FN, R.LN, R.PHONE, A.STATE, A.DISTRICT, A.STREET, A.HOUSE, A.PINCODE, F.FOODNAME, F.QUANTITY, TO_CHAR(F.SHELFLIFE, 'DD/MM/YYYY') FROM DONATION D JOIN DONOR R ON D.DONORID = R.ID JOIN ADDRESS A ON R.ADDRESSID = A.ADDRESSID JOIN FOOD F ON D.FOODID = F.FOODID WHERE D.NGO_ID IS NOT NULL ORDER BY D.DONATIONID")
+        donos = query("SELECT D.DONATIONID, D.FOODID, D.DONORID, D.STATUS, TO_CHAR(D.DONATIONDATE, 'Month DD, YYYY'), D.NGO_ID, R.FN, R.LN, R.PHONE, A.STATE, A.DISTRICT, A.STREET, A.HOUSE, A.PINCODE, F.FOODNAME, F.QUANTITY, TO_CHAR(F.SHELFLIFE, 'DD/MM/YYYY'), N.NGONAME FROM DONATION D JOIN DONOR R ON D.DONORID = R.ID JOIN ADDRESS A ON R.ADDRESSID = A.ADDRESSID JOIN FOOD F ON D.FOODID = F.FOODID JOIN NGO N ON D.NGO_ID = N.ID WHERE D.NGO_ID IS NOT NULL ORDER BY D.DONATIONID")
 
         pending_donos = [d for d in donos if d[3] == 'PENDING']
         active_donos = [d for d in donos if d[3] == 'ACTIVE']
@@ -716,8 +709,6 @@ def create_app():
         for ngo in ngo_list:
             volunteers = get_nearby_volunteers_from_ngo(ngo[0])
             avail_vols[ngo[0]] = volunteers
-
-        print(avail_vols[29])
 
         assigned_vols = query("SELECT * FROM VOLUNTEER, DONATION_ASSIGNMENT WHERE VERIFICATION_STATUS = 1 AND AVAILABLE = 0 AND ID = VOLUNTEER_ID")
         return render_template("admin.html",unverified_ngos=unverified_ngos, pending_donos=pending_donos, unverified_vols=unverified_vols,avail_vols=avail_vols,assigned_vols=assigned_vols,active_donos=active_donos,donos=donos)
@@ -745,7 +736,7 @@ def create_app():
         assign_id = query("SELECT NVL(MAX(ASSIGNMENT_ID), 100) + 1 FROM DONATION_ASSIGNMENT")[0][0]
 
         update("UPDATE VOLUNTEER SET AVAILABLE = 0 WHERE ID = :1", (vol_id,))
-        insert("INSERT INTO DONATION_ASSIGNMENT (ASSIGNMENT_ID, DONATION_ID, VOLUNTEER_ID, NGO_ID, STATUS) VALUES(:1, :2, :3, 29, 'ACTIVE')", (assign_id,dono_id,vol_id))
+        insert("INSERT INTO DONATION_ASSIGNMENT (ASSIGNMENT_ID, DONATION_ID, VOLUNTEER_ID) VALUES(:1, :2, :3)", (assign_id,dono_id,vol_id))
 
         return jsonify({"message": "Volunteer Assigned"}), 200
     
