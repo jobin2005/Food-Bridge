@@ -630,11 +630,15 @@ def create_app():
                 return jsonify({'success': False, 'error': 'Missing status'}), 400
 
             # Update the DONATION_ASSIGNMENT table
+            # Update the DONATION table (this is where the STATUS column exists)
             update("""
-                UPDATE DONATION_ASSIGNMENT
+                UPDATE DONATION
                 SET STATUS = :1
-                WHERE ASSIGNMENT_ID = :2
+                WHERE DONATIONID = (
+                    SELECT DONATION_ID FROM DONATION_ASSIGNMENT WHERE ASSIGNMENT_ID = :2
+                )
             """, (new_status, assignment_id))
+
 
             # Update the DONATIONS table
             update("""
@@ -680,7 +684,7 @@ def create_app():
             WHERE DA.VOLUNTEER_ID = :1
             GROUP BY D.STATUS
         """, (volunteer_id,))
-
+        
         # Initialize all to 0
         stats = {'ACTIVE': 0, 'COMPLETED': 0, 'PENDING': 0}
 
