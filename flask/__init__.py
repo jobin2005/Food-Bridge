@@ -1,5 +1,3 @@
-import os
-
 from flask import Flask, render_template, request, jsonify, session, url_for, abort, redirect
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from datetime import datetime, timedelta, date
@@ -23,13 +21,13 @@ def role_required(role):
         @wraps(f)
         def wrapper(*args, **kwargs):
             if current_user.role.lower() != role.lower():
-                return abort(403, description="Access denied. You're not authorized to view this page.")  # Or redirect to a "not authorized" page
+                return abort(403, description="Access denied. You're not authorized to view this page.")
             return f(*args, **kwargs)
         return wrapper
     return decorator
 
 def create_app():
-    # create and configure the app
+
     app = Flask(__name__)
     app.config.from_mapping(
         SECRET_KEY='dev',
@@ -51,11 +49,7 @@ def create_app():
         if user_data:
             return User(user_data[0][0], user_data[0][1], user_data[0][2])
         return None
-
-    # a simple page that says hello
-    @app.route('/hello')
-    def hello():
-        return 'Hello, World!'
+    
     
     @app.route('/')
     def mainpage():
@@ -91,13 +85,15 @@ def create_app():
                 if password == user_data[0][2]:  # Check password
                     user_role = query("SELECT ROLE FROM ALLUSERS WHERE ID = :1",(user_data[0][0],))[0][0]
                     user = User(user_data[0][0], user_data[0][1], user_role)
+                    if user_role == 'ngo':
+                        confirm = query("SELECT VERIFICATION_STATUS FROM NGO WHERE ID = :1",(user_data[0][0],))[0][0]
+                        if confirm != 1: return jsonify({"success": False, "error": "Pending NGO Verification. Try again later."}) 
                     login_user(user, remember=True)
                     session['user_id'] = user_data[0][0]  # Store user ID in session  
                     return jsonify({"success": True, "role": user_role})  # Search the role from the DB and redirects to the page accordingly
             return jsonify({"success": False, "error": "Invalid username or password!"}) 
 
         return render_template("login.html", user=current_user)
-
     
     @app.route('/logout')
     @login_required
@@ -109,10 +105,6 @@ def create_app():
     @app.route('/signup')
     def select_role():
         return render_template("signup.html")
-    
-    @app.route('/ngo_register')
-    def ngo_register():
-        return render_template("ngo_register.html")
     
     @app.route('/register', methods=['GET', 'POST'])
     def register():
@@ -159,8 +151,9 @@ def create_app():
             Lname = request.form.get('last_name')
             Gender = request.form.get('gender')
             Dob = request.form.get('dob')  # expected input: 'YYYY-MM-DD'
-            dob_obj = datetime.strptime(Dob, '%Y-%m-%d')  # parse it
-            Dob_formatted = dob_obj.strftime('%d-%m-%Y')  # format to 'DD-MM-YYYY'
+            if (Dob):
+                dob_obj = datetime.strptime(Dob, '%Y-%m-%d')  # parse it
+                Dob_formatted = dob_obj.strftime('%d-%m-%Y')  # format to 'DD-MM-YYYY'
 
             Phone = request.form.get('mobile')
             Email = request.form.get('email')
@@ -202,18 +195,16 @@ def create_app():
                     return jsonify({"success": True})
                 
             else:
-                     # Generate new address ID
+                # Generate new address ID
                 Add_id = query("SELECT NVL(MAX(ADDRESSID), 0) + 1 FROM ADDRESS")[0][0]
                 
     
             if role == 'ngo':
-                insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, PINCODE) VALUES (:1, :2, :3, :4, :5)",
-               (Add_id, state, district, street, pincode))
+                insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, PINCODE) VALUES (:1, :2, :3, :4, :5)", (Add_id, state, district, street, pincode))
             else:
-                insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)",
-               (Add_id, state, district, street, house, pincode))
+                insert("INSERT INTO ADDRESS (ADDRESSID, STATE, DISTRICT, STREET, HOUSE, PINCODE) VALUES (:1, :2, :3, :4, :5, :6)", (Add_id, state, district, street, house, pincode))
                 
-                 # Insert user details
+            # Insert user details
             if role == "donor":
                 insert("INSERT INTO DONOR (ID, FN, LN, GENDER, DOB, PHONE, EMAIL, ADDRESSID) VALUES (:1, :2, :3, :4, TO_DATE(:5, 'DD-MM-YYYY'), :6, :7, :8)", (new_id, Fname, Lname, Gender, Dob_formatted, Phone, Email, Add_id))
                 insert("insert into PHONE (PHONE_NUMBER,USER_ID,ROLE) values (:1,:2,:3)",(Phone,new_id,role))
@@ -289,10 +280,6 @@ def create_app():
                 return jsonify({"success": False, "error": str(e)})
 
         return render_template("donor.html", current_date=current_date, user_fn=user_fn)
-    
-    @app.route('/donor_profile')
-    def donor_profile():
-        return render_template("donor_profile.html")
     
     @app.route('/get_profile', methods=['GET'])
     @login_required
@@ -370,6 +357,7 @@ def create_app():
                 last_dono_result = query("SELECT TO_CHAR(DONATIONDATE, 'FXFMMonth DD, YYYY', 'NLS_DATE_LANGUAGE = American') FROM DONATION WHERE DONATIONID = (SELECT MAX(DONATIONID) FROM DONATION WHERE DONORID = :1)", (user_id,))
                 user_profile["total_dono"] = dono_count[0][0] if dono_count else 0
                 user_profile["last_dono"] = last_dono_result[0][0] if last_dono_result else "N/A"
+
             elif user_role == "volunteer":
                 delv_count = query("SELECT COUNT(*) FROM DONATION_ASSIGNMENT WHERE VOLUNTEER_ID = :1", (user_id,))
                 last_delv_result = query("SELECT TO_CHAR(D.DONATIONDATE, 'FMMonth DD, YYYY', 'NLS_DATE_LANGUAGE = American') FROM DONATION D JOIN DONATION_ASSIGNMENT A ON D.DONATIONID = A.DONATION_ID WHERE A.VOLUNTEER_ID = :1 ORDER BY D.DONATIONDATE DESC FETCH FIRST 1 ROWS ONLY", (user_id,))
@@ -472,22 +460,22 @@ def create_app():
 
         current_year = datetime.now().year
 
-        # 👉 Total completed donations count
+        # Total completed donations count
         total_donations = query("SELECT COUNT(*) FROM DONATION WHERE NGO_ID = :1 and STATUS='COMPLETED'", (user_id,))
         c = total_donations[0][0] if total_donations else 0
 
-        # 👉 NGO name
+        # NGO name
         name = query("SELECT NGONAME FROM NGO WHERE ID = :1", (user_id,))
         org_name = name[0][0]
 
-        # 👉 Base month dictionary for donation chart
+        # Base month dictionary for donation chart
         month_template = {
             'Jan': 0, 'Feb': 0, 'Mar': 0, 'Apr': 0,
             'May': 0, 'Jun': 0, 'Jul': 0, 'Aug': 0,
             'Sep': 0, 'Oct': 0, 'Nov': 0, 'Dec': 0
         }
 
-        # 👉 Monthly donation data for chart (STATUS = 'COMPLETED')
+        # Monthly donation data for chart (STATUS = 'COMPLETED')
         donation_data = query("""
             SELECT 
                 TO_CHAR(DONATIONDATE, 'Mon') AS Month_Name,
@@ -505,7 +493,7 @@ def create_app():
                 Month_Number
         """, (current_year, user_id))
 
-        # 👉 Fill chart data from the result
+        # Fill chart data from the result
         for row in donation_data:
             month_name = row[0].strip()
             c_count = row[2]
@@ -515,7 +503,7 @@ def create_app():
         month_labels = list(month_template.keys())
         donation_values = list(month_template.values())
 
-        # 👉 Unclaimed donation details (STATUS: ACTIVE/PENDING)
+        # Unclaimed donation details (STATUS: ACTIVE/PENDING)
         unclaimed_donations = query("""
             SELECT 
                 DNR.FN || ' ' || DNR.LN AS Donor_Name,
@@ -536,7 +524,7 @@ def create_app():
                 AND D.STATUS IN ('ACTIVE', 'PENDING')
         """, (user_id,))
 
-        # 👉 Claimed donation details (STATUS: COMPLETED)
+        # Claimed donation details (STATUS: COMPLETED)
         claimed_donations = query("""
             SELECT 
                 DNR.FN || ' ' || DNR.LN AS Donor_Name,
@@ -556,11 +544,11 @@ def create_app():
                 AND D.STATUS='COMPLETED'
         """, (user_id,))
 
-        # 👉 Claimed donation count
+        # Claimed donation count
         claimed_result = query("SELECT COUNT(*) FROM DONATION WHERE NGO_ID = :1 AND STATUS = 'COMPLETED'", (user_id,))
         claimed_count = claimed_result[0][0] if claimed_result else 0
 
-        # 👉 Unclaimed donation count
+        # Unclaimed donation count
         unclaimed_result = query("SELECT COUNT(*) FROM DONATION WHERE NGO_ID = :1 AND STATUS IN ('ACTIVE', 'PENDING')", (user_id,))
         unclaimed_count = unclaimed_result[0][0] if unclaimed_result else 0
 
@@ -577,7 +565,7 @@ def create_app():
         donor_food_data = get_donors_by_pincode(all_relevant_pincodes)
         print("Donor-Food Data:", donor_food_data)
 
-        # 👉 Final render
+        # Final render
         return render_template("ngo.html",
             total_donations=c,
             org_name=org_name,
@@ -590,10 +578,6 @@ def create_app():
             unclaimed_count=unclaimed_count,
             donor_food_data=donor_food_data
         )
-
-    @app.route('/ngo_profile')
-    def ngo_profile():
-        return render_template("ngo_profile.html")
     
     @app.route('/assigned_donation')
     @login_required
@@ -690,10 +674,11 @@ def create_app():
 
         # Get stats: active (ONGOING), cleared (COMPLETED), pending (PENDING)
         stats_result = query("""
-            SELECT STATUS, COUNT(*) 
-            FROM DONATION_ASSIGNMENT
-            WHERE VOLUNTEER_ID = :1
-            GROUP BY STATUS
+            SELECT D.STATUS, COUNT(*) 
+            FROM DONATION_ASSIGNMENT DA
+            JOIN DONATION D ON DA.DONATION_ID = D.DONATIONID
+            WHERE DA.VOLUNTEER_ID = :1
+            GROUP BY D.STATUS
         """, (volunteer_id,))
 
         # Initialize all to 0
