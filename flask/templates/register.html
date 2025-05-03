@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            background: url('/static/bg3.jpg');
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin: 10px 0 5px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .radio-group, .checkbox-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .radio-group label, .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        input[type="radio"], input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .error-message {
+            color: red;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Registration</h1>
+        
+        {% if request.args.get('role', '') == 'donor' or request.args.get('role', '') == 'volunteer' %}
+        <form id="register-form">
+            <input type="hidden" name="role" id="role-input">
+
+            <label><b>First Name</b></label>
+            <input type="text" id="first_name" name="first_name" placeholder="First Name" required>
+
+            <label><b>Last Name</b></label>
+            <input type="text" id="last_name" name="last_name" placeholder="Last Name">
+
+            <label><b>Date of Birth</b></label>
+            <input type="date" name="dob" id="dob" max="{{ min_date }}">
+
+            <label><b>Gender</b></label>
+            <div class="radio-group">
+                <label><input type="radio" name="gender" value="Male" required> Male</label>
+                <label><input type="radio" name="gender" value="Female" required> Female</label>
+                <label><input type="radio" name="gender" value="Others" required> Others</label>
+            </div>
+
+            <label><b>Email</b></label>
+            <input type="email" id="email" name="email" placeholder="Email" required>
+
+            <label><b>Mobile Number</b></label>
+            <input type="tel" id="mobile" name="mobile" placeholder="Mobile Number" required pattern="\d{10}" title="Mobile number must be 10 digits.">
+
+            <label><b>State</b></label>
+            <input type="text" id="state" name="state" placeholder="State" required>
+
+            <label><b>District</b></label>
+            <input type="text" id="district" name="district" placeholder="District" required>
+
+            <label><b>Street Name</b></label>
+            <input type="text" id="street" name="street" placeholder="Street Name" required>
+
+            <label><b>House No/Locality</b></label>
+            <input type="text" id="house" name="house" placeholder="House No./Locality" required>
+
+            <label><b>Pincode</b></label>
+            <input type="text" id="pincode" name="pincode" placeholder="Pincode" required pattern="\d{6}" title="Pincode must be exactly 6 digits." oninput="validatePincode()">
+            <p id="pincodeError" class="error-message">Pincode must be exactly 6 digits.</p>
+
+            <label><b>Username</b></label>
+            <input type="text" id="username" name="username" placeholder="Username" required>
+
+            <label><b>Password</b></label>
+            <input type="password" id="password" name="password" placeholder="Create Password" required oninput="validatePassword()">
+            <p id="passwordError" class="error-message">Password must be at least 6 characters long and include at least 1 special character.</p>
+
+            <label><b>Confirm Password</b></label>
+            <input type="password" id="confirm_password" name="password" placeholder="Confirm Password" required oninput="validateConfirmPassword()">
+            <p id="passwordMatchError" class="error-message">Passwords do not match.</p>
+
+            <p id="registrationError" class="error-message"></p>
+
+            <div class="checkbox-group">
+                <label><input type="checkbox" required> Accept terms and conditions</label>
+            </div>
+
+            <button type="submit" class="btn">Register</button>
+        </form>
+        {% elif request.args.get('role', '') == 'ngo' %}
+        <form id="register-form">
+
+            <input type="hidden" name="role" id="role-input">
+
+            <label><b>NGO Name</b></label>
+            <input type="text" id="ngo_name" name="ngo_name" placeholder="NGO Name" required>
+
+            <label><b>NGO Registation Id</b></label>
+            <input type="text" id="reg_id" name="reg_id" placeholder="Registration ID" required>
+
+            <label><b>Email</b></label>
+            <input type="email" id="email" name="email" placeholder="Email" required>
+
+            <label><b>Mobile Number</b></label>
+            <input type="tel" id="mobile" name="mobile" placeholder="Mobile Number" required pattern="\d{10}" title="Mobile number must be 10 digits.">
+
+            <label><b>State</b></label>
+            <input type="text" id="state" name="state" placeholder="State" required>
+
+            <label><b>District</b></label>
+            <input type="text" id="district" name="district" placeholder="District" required>
+
+            <label><b>Street Name</b></label>
+            <input type="text" id="street" name="street" placeholder="Street Name" required>
+
+            <label><b>Owner Name</b></label>
+            <input type="text" id="owner" name="owner" placeholder="owner" required>
+
+            <label><b>Pincode</b></label>
+            <input type="text" id="pincode" name="pincode" placeholder="Pincode" required pattern="\d{6}" title="Pincode must be exactly 6 digits." oninput="validatePincode()">
+            <p id="pincodeError" class="error-message">Pincode must be exactly 6 digits.</p>
+
+            <label><b>Username</b></label>
+            <input type="text" id="username" name="username" placeholder="Username" required>
+
+            <label><b>Password</b></label>
+            <input type="password" id="password" name="password" placeholder="Create Password" required oninput="validatePassword()">
+            <p id="passwordError" class="error-message">Password must be at least 6 characters long and include at least 1 special character.</p>
+
+            <label><b>Confirm Password</b></label>
+            <input type="password" id="confirm_password" name="password" placeholder="Confirm Password" required oninput="validateConfirmPassword()">
+            <p id="passwordMatchError" class="error-message">Passwords do not match.</p>
+
+            <p id="registrationError" class="error-message"></p>
+
+            <div class="checkbox-group">
+                <label><input type="checkbox" required> Accept terms and conditions</label>
+            </div>
+
+            <button type="submit" class="btn">Register</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <script>
+        function validatePassword() {
+            var password = document.getElementById("password").value;
+            var passwordError = document.getElementById("passwordError");
+            var passwordPattern = /^(?=.*[!@#$%^&*(),.?\":{}|<>])[A-Za-z\d!@#$%^&*(),.?\":{}|<>]{6,}$/;
+
+            passwordError.style.display = passwordPattern.test(password) ? "none" : "block";
+        }
+
+        function validateConfirmPassword() {
+            var password = document.getElementById("password").value;
+            var confirmPassword = document.getElementById("confirm_password").value;
+            var passwordMatchError = document.getElementById("passwordMatchError");
+
+            passwordMatchError.style.display = (password === confirmPassword) ? "none" : "block";
+        }
+
+        function validatePincode() {
+            var pincode = document.getElementById("pincode").value;
+            var pincodeError = document.getElementById("pincodeError");
+            var pincodePattern = /^\d{6}$/; 
+
+            pincodeError.style.display = pincodePattern.test(pincode) ? "none" : "block";
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const role = urlParams.get("role");
+
+        if (role) {
+            document.getElementById("role-input").value = role;
+            console.log("DEBUG: Role set in hidden input ->", role);
+        } else {
+            console.error("DEBUG: Role parameter missing in URL!");
+        }
+
+        // Ensure role is set in form before submission
+        document.getElementById("register-form").addEventListener("submit", async function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            let formData = new FormData(this); // Get form data
+
+            if (!formData.get("role")) {
+                alert("Role is missing! Please select a role.");
+                return;
+            }
+
+            let response = await fetch("/register", {
+                method: "POST",
+                body: formData
+            });
+
+            let result = await response.json(); // Get the JSON response
+
+            if (result.success) {
+                alert("Registration successful! Redirecting to login...");
+                setTimeout(() => {
+                    window.location.href = "/login"; // Redirect after success
+                }, 1500);
+            } else {
+                document.getElementById("registrationError").innerText = result.error;
+                document.getElementById("registrationError").style.display = "block";
+            }
+        });
+    </script>
+</body>
+</html>

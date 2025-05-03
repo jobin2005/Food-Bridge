@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support - Volunteer Dashboard</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Feedback - Volunteer Dashboard</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='styles.css')}}">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,38 +21,40 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .support-content {
+        .feedback-form {
             background: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-top: 30px;
         }
-        .support-content h4 {
+        .feedback-form h4 {
             margin-bottom: 20px;
             font-size: 22px;
             color: #40916c; /* Consistent text color */
         }
-        .support-content p {
-            font-size: 16px;
-            margin-bottom: 20px;
-        }
-        .contact-form label {
+        .feedback-form label {
             font-size: 16px;
             margin-bottom: 8px;
             display: block;
         }
-        .contact-form input[type="text"], .contact-form textarea {
+        .feedback-form textarea {
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
             border-radius: 5px;
             border: 1px solid #ddd;
             font-size: 14px;
-        }
-        .contact-form textarea {
             resize: vertical;
             min-height: 100px;
+        }
+        .feedback-form input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
         }
         .submit-btn {
             background: #40916c; /* Consistent button color */
@@ -70,27 +72,25 @@
 </head>
 <body>
     <header>
-        <h3>Support Page</h3>
-        <p>We’re here to help. Let us know if you need assistance!</p>
+        <h3>Feedback Page</h3>
+        <p>We value your feedback to improve our services</p>
     </header>
     
-    <section class="support-content">
-        <h4>How can we assist you?</h4>
-        <p>If you have any questions or need support, feel free to get in touch with us. We are here to help you!</p>
+    <section class="feedback-form">
+        <h4>Share Your Feedback</h4>
+        <form action="#">
 
-        <form action="#" class="contact-form">
-            <label for="name">Your Name</label>
-            <input type="text" id="name" placeholder="Enter your name" required>
+            <label for="feedback">What is Good..</label>
+            <textarea id="feedback" placeholder="Share your thoughts..." required></textarea>
 
-            <label for="email">Your Email</label>
-            <input type="text" id="email" placeholder="Enter your email" required>
+            <label for="feedback">Areas of Improvement</label>
+            <textarea id="feedback" placeholder="Share your thoughts..." required></textarea>
 
-            <label for="message">Your Message</label>
-            <textarea id="message" placeholder="Describe your issue or inquiry..." required></textarea>
+            <label for="feedback">Any Other Suggestion..</label>
+            <textarea id="feedback" placeholder="Share your thoughts..." required></textarea>
 
-            <button type="submit" class="submit-btn">Submit Request</button>
+            <button type="submit" class="submit-btn">Submit Feedback</button>
         </form>
     </section>
 </body>
 </html>
-

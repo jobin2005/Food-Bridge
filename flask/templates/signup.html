@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role Selection | FoodBridge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f8f0e8; /* Matches FoodBridge theme */
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            width: 360px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #249b6a; /* Deep green from FoodBridge */
+        }
+
+        .role-selection {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .role-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s ease-in-out;
+            color: white;
+        }
+
+        /* Volunteer Button */
+        .role-btn:nth-child(1) {
+            background: #33a374; /* Primary button color */
+        }
+
+        .role-btn:nth-child(1):hover {
+            background: #249b6a; /* Darker green on hover */
+        }
+
+        /* Donor Button */
+        .role-btn:nth-child(2) {
+            background: #d6f5b0; /* Soft light green */
+            color: #249b6a; /* Deep green text */
+        }
+
+        .role-btn:nth-child(2):hover {
+            background: #b8e294; /* Darker greenish shade */
+        }
+
+        /* NGO Button - Balanced */
+        .role-btn:nth-child(3) {
+            background: #c4a484; /* Soft warm beige */
+            color: white;
+        }
+
+        .role-btn:nth-child(3):hover {
+            background: #a58a6f; /* Slightly darker for hover */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Select Your Role</h2>
+        <div class="role-selection">
+            <button class="role-btn" onclick="navigate('volunteer')">Volunteer</button>
+            <button class="role-btn" onclick="navigate('donor')">Donor</button>
+            <button class="role-btn" onclick="navigate('ngo')">NGO</button>
+        </div>
+    </div>
+
+    <script>
+        function navigate(role) {
+            if (role){
+                window.location.href = `/register?role=${role}`;
+            }
+        }
+    </script>
+
+</body>
+</html>
